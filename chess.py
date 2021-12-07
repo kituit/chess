@@ -42,7 +42,7 @@ class Pawn(Piece):
 
         moves = []
 
-        next_row = self.row + (-1 if self.type == BLACK else 1)
+        next_row = self.row + (-1 if self.colour == BLACK else 1)
 
         if next_row in range(8):
             
