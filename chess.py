@@ -31,6 +31,7 @@ class Pawn(Piece):
     def __str__(self):
         return PAWN
 
+
 class Board:
 
     def __init__(self):
@@ -38,6 +39,31 @@ class Board:
         self.grid[1] = [Pawn(1, x, WHITE) for x in range(8)]
         self.grid[-2] = [Pawn(1, x, BLACK) for x in range(8)]
 
+    def __str__(self):
+        grid_str = ""
+        for index, row in enumerate(self.grid):
+            for element in row:
+                if element is None:
+                    grid_str += " "
+                else:
+                    grid_str += element.__str__()
+            if index != len(self.grid) - 1:
+                grid_str += '\n'
+        
+        return grid_str
+
+    def move_piece(self, curr_row, curr_col, new_row, new_col):
+        piece = self.grid[curr_row][curr_col]
+        piece.set_pos(new_row, new_col)
+        self.grid[curr_row][curr_col] = None
+        self.grid[new_row][new_col] = piece  
+                
+
 if __name__ == '__main__':
     b = Board()
-    print(b.grid)
+    print(b)
+
+    print("==========")
+
+    b.move_piece(1, 0, 2, 0)
+    print(b)
