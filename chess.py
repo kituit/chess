@@ -4,6 +4,7 @@ BLACK = "Black"
 WHITE = "White"
 
 PAWN = "P"
+KNIGHT = "K"
 
 class Piece:
 
@@ -62,13 +63,58 @@ class Pawn(Piece):
 
         return moves
 
+class Knight(Piece):
+
+    def __init__(self, row, col, colour):
+        Piece.__init__(self, row, col, colour)
+        self.type = KNIGHT
+    
+    def __str__(self):
+        return KNIGHT
+    
+    def get_type(self):
+        return self.type
+
+    def available_moves(self, grid):
+        moves = []
+        
+        row = self.row
+        col = self.col
+        KNIGHT_MOVES = [
+            (row + 1, col + 2),
+            (row + 1, col - 2),
+            (row + 2, col + 1),
+            (row + 2, col - 1),
+            (row - 1, col + 2),
+            (row - 1, col - 2),
+            (row - 2, col + 1),
+            (row - 2, col - 1)
+        ]
+
+        for trial_row, trial_col in KNIGHT_MOVES:
+            if trial_row in range(8) and trial_col in range(8):
+                piece = grid[trial_row][trial_col]
+
+                if piece is None or piece.colour != self.colour:
+                    moves.append((trial_row, trial_col))
+
+        return moves
+
 
 class Board:
 
     def __init__(self):
         self.grid = [[None for x in range(8)] for y in range(8)]
+        
+        # Pawns
         self.grid[1] = [Pawn(1, x, WHITE) for x in range(8)]
-        self.grid[-2] = [Pawn(1, x, BLACK) for x in range(8)]
+        self.grid[6] = [Pawn(6, x, BLACK) for x in range(8)]
+
+        # Knights
+        self.grid[0][1] = Knight(0, 1, WHITE)
+        self.grid[0][6] = Knight(0, 6, WHITE)
+        self.grid[7][1] = Knight(7, 1, BLACK)
+        self.grid[7][6] = Knight(7, 6, BLACK)
 
     def __str__(self):
         grid_str = ""
