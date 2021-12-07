@@ -21,6 +21,9 @@ class Piece:
 
     def curr_pos(self):
         return (self.row, self.col)
+    
+    def get_colour(self):
+        return self.colour
 
 class Pawn(Piece):
 
@@ -30,6 +33,34 @@ class Pawn(Piece):
 
     def __str__(self):
         return PAWN
+    
+    def get_type(self):
+        return self.type
+    
+    def available_moves(self, grid):
+
+        moves = []
+
+        next_row = self.row + (-1 if self.type == BLACK else 1)
+
+        if next_row in range(8):
+            
+            # Moving pawn forward if nothing in front of it
+            if grid[next_row][self.col] is None:
+                moves.append((next_row, self.col))
+            
+            # Moving pawn diagonally forward if there is an enemy piece there
+            if (self.col - 1 in range(8) and grid[next_row][self.col - 1] is not None
+                and grid[next_row][self.col - 1].get_colour() != self.colour):
+                moves.append((next_row, self.col - 1))
+
+            # Moving pawn diagonally forward if there is an enemy piece there
+            if (self.col + 1 in range(8) and grid[next_row][self.col + 1] is not None
+                and grid[next_row][self.col + 1].get_colour() != self.colour):
+                moves.append((next_row, self.col + 1))
+
+
+        return moves
 
 
 class Board:
@@ -54,9 +85,19 @@ class Board:
 
     def move_piece(self, curr_row, curr_col, new_row, new_col):
         piece = self.grid[curr_row][curr_col]
+        
+        if (new_row, new_col) not in piece.available_moves(self.grid):
+            raise ValueError("Move not valid")
+        
         piece.set_pos(new_row, new_col)
         self.grid[curr_row][curr_col] = None
         self.grid[new_row][new_col] = piece  
+    
+    def piece_at_pos(self, row, col):
+        if self.grid[row][col] is None:
+            return None
+        else:
+            return self.grid[row][col].get_type()
                 
 
 if __name__ == '__main__':
@@ -65,5 +106,16 @@ if __name__ == '__main__':
 
     print("==========")
 
-    b.move_piece(1, 0, 2, 0)
-    print(b)
+    while True:
+        print("Piece:")
+        curr_row = int(input("Row: "))
+        curr_col = int(input("Col: "))
+        print("Move:")
+        new_row = int(input("Row: "))
+        new_col = int(input("Col: "))
+        
+        try:
+            b.move_piece(curr_row, curr_col, new_row, new_col)
+            print(b)
+        except:
+            print("Invalid move")
