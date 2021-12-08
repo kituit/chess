@@ -4,11 +4,13 @@ BLACK = "Black"
 WHITE = "White"
 
 PAWN = "P"
-KNIGHT = "K"
+KNIGHT = "k"
+KING = "K"
 
 VALUES = {
     PAWN : 1,
-    KNIGHT : 3
+    KNIGHT : 3,
+    KING : 1000
 }
 
 class Piece:
@@ -42,7 +44,7 @@ class Pawn(Piece):
     def get_type(self):
         return self.type
 
-    def available_moves(self, grid):
+    def available_moves(self, board):
 
         moves = []
 
@@ -51,17 +53,17 @@ class Pawn(Piece):
         if next_row in range(8):
 
             # Moving pawn forward if nothing in front of it
-            if grid[next_row][self.col] is None:
+            if board.get_piece(next_row, self.col) is None:
                 moves.append((next_row, self.col))
 
-            # Moving pawn diagonally forward if there is an enemy piece there
-            if (self.col - 1 in range(8) and grid[next_row][self.col - 1] is not None
-                    and grid[next_row][self.col - 1].get_colour() != self.colour):
+            # Moving pawn diagonally forward left if there is an enemy piece there
+            if (self.col - 1 in range(8) and board.get_piece(next_row, self.col - 1) is not None
+                    and board.get_piece(next_row, self.col - 1).get_colour() != self.colour):
                 moves.append((next_row, self.col - 1))
 
-            # Moving pawn diagonally forward if there is an enemy piece there
-            if (self.col + 1 in range(8) and grid[next_row][self.col + 1] is not None
-                    and grid[next_row][self.col + 1].get_colour() != self.colour):
+            # Moving pawn diagonally forward right if there is an enemy piece there
+            if (self.col + 1 in range(8) and board.get_piece(next_row, self.col + 1) is not None
+                    and board.get_piece(next_row, self.col + 1).get_colour() != self.colour):
                 moves.append((next_row, self.col + 1))
 
         return moves
@@ -78,7 +80,7 @@ class Knight(Piece):
     def get_type(self):
         return self.type
 
-    def available_moves(self, grid):
+    def available_moves(self, board):
         moves = []
 
         row = self.row
@@ -89,13 +91,12 @@ class Knight(Piece):
 
         for trial_row, trial_col in KNIGHT_MOVES:
             if trial_row in range(8) and trial_col in range(8):
-                piece = grid[trial_row][trial_col]
+                piece = board.get_piece(trial_row, trial_col)
 
                 if piece is None or piece.colour != self.colour:
                     moves.append((trial_row, trial_col))
 
         return moves
-
 
 class Board:
     def __init__(self):
@@ -151,7 +152,7 @@ class Board:
     def move_piece(self, curr_row, curr_col, new_row, new_col):
         piece = self.grid[curr_row][curr_col]
 
-        if (new_row, new_col) not in piece.available_moves(self.grid):
+        if (new_row, new_col) not in piece.available_moves(self):
             raise ValueError("Move not valid")
         
         target_piece = self.grid[new_row][new_col]
@@ -170,6 +171,9 @@ class Board:
             return None
         else:
             return self.grid[row][col].get_type()
+    
+    def get_piece(self, row, col):
+        return self.grid[row][col]
 
 
 if __name__ == '__main__':
