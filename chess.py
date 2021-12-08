@@ -98,6 +98,50 @@ class Knight(Piece):
 
         return moves
 
+class King(Piece):
+    def __init__(self, row, col, colour):
+        Piece.__init__(self, row, col, colour)
+        self.type = KING
+
+    def __str__(self):
+        return KING
+
+    def get_type(self):
+        return self.type
+    
+    def available_moves(self, board):
+        moves = []
+        
+        opposing_pieces = board.get_pieces(BLACK) if self.colour == WHITE else board.get_pieces(WHITE)
+        
+        # Removing King from list of opposing pieces (King is first piece in list)
+        opposing_pieces = opposing_pieces[1:]
+        opposing_moves = []
+        for piece in opposing_pieces:
+            opposing_moves += piece.available_moves(board)
+        
+        for row in [self.row - 1, self.row, self.row + 1]:
+            for col in [self.col - 1, self.col, self.col + 1]:
+                if row in range(8) and col in range(8) and not (row == col == 0):
+                    piece = board.get_piece(row, col)
+                    if (piece is None or piece.get_colour() != self.colour) and (row, col) not in opposing_moves:
+                        moves.append((row, col))
+
+        # TODO Add castling feature
+
+        return moves
+        
+    def is_in_check(self, board):
+        opposing_pieces = board.get_pieces(BLACK) if self.colour == WHITE else board.get_pieces(WHITE)
+        
+        # Removing King from list of opposing pieces (King is first piece in list)
+        opposing_pieces = opposing_pieces[1:]
+        opposing_moves = []
+        for piece in opposing_pieces:
+            opposing_moves += piece.available_moves(board)
+
+        return self.curr_pos() in opposing_moves
+
 class Board:
     def __init__(self):
         self.grid = [[None for x in range(8)] for y in range(8)]
@@ -112,19 +156,25 @@ class Board:
         self.grid[7][1] = Knight(7, 1, BLACK)
         self.grid[7][6] = Knight(7, 6, BLACK)
 
+        # Kings
+        self.white_king = King(0, 4, WHITE)
+        self.grid[0][4] = self.white_king
+        self.black_king = King(7, 4, BLACK)
+        self.grid[7][4] = self.black_king
+
         self.white_pieces = []
         for row in self.grid[0:2]:
             for piece in row:
                 if piece is not None:
                     self.white_pieces.append(piece)
-        self.white_pieces.sort(key= lambda piece: VALUES[piece.get_type()])
+        self.white_pieces.sort(key= lambda piece: VALUES[piece.get_type()], reverse= True)
 
         self.black_pieces = []
-        for row in self.grid[6:7]:
+        for row in self.grid[6:8]:
             for piece in row:
                 if piece is not None:
                     self.black_pieces.append(piece)
-        self.black_pieces.sort(key= lambda piece: VALUES[piece.get_type()])
+        self.black_pieces.sort(key= lambda piece: VALUES[piece.get_type()], reverse= True)
 
     def __str__(self):
         grid_str = ""
@@ -194,5 +244,6 @@ if __name__ == '__main__':
             b.move_piece(curr_row, curr_col, new_row, new_col)
             print(b)
             print(f"White pieces: {b.get_pieces_str(WHITE)}, Black pieces: {b.get_pieces_str(BLACK)}")
+            print(f"Check: White - {b.white_king.is_in_check(b)}, Black - {b.black_king.is_in_check(b)}")
         except:
             print("Invalid move")
