@@ -1,16 +1,23 @@
 # Hello World
 
+UP = 1
+DOWN = -1
+LEFT = -1
+RIGHT = 1
+
 BLACK = "Black"
 WHITE = "White"
 
 PAWN = "P"
 KNIGHT = "k"
+BISHOP = "B"
 KING = "K"
 
 VALUES = {
-    PAWN : 1,
-    KNIGHT : 3,
-    KING : 1000
+    PAWN: 1,
+    KNIGHT: 3,
+    BISHOP: 3,
+    KING: 1000
 }
 
 class Piece:
@@ -37,6 +44,7 @@ class Pawn(Piece):
     def __init__(self, row, col, colour):
         Piece.__init__(self, row, col, colour)
         self.type = PAWN
+        self.has_moved = False
 
     def __str__(self):
         return PAWN
@@ -55,6 +63,11 @@ class Pawn(Piece):
             # Moving pawn forward if nothing in front of it
             if board.get_piece(next_row, self.col) is None:
                 moves.append((next_row, self.col))
+            
+            # Moving pawn 2 places forward if nothing in front of it and has not yet moved
+            if board.get_piece(next_row + 1, self.col) is None and not self.has_moved:
+                moves.append((next_row + 1, self.col))
+                self.has_moved = True
 
             # Moving pawn diagonally forward left if there is an enemy piece there
             if (self.col - 1 in range(8) and board.get_piece(next_row, self.col - 1) is not None
@@ -96,6 +109,49 @@ class Knight(Piece):
                 if piece is None or piece.colour != self.colour:
                     moves.append((trial_row, trial_col))
 
+        return moves
+
+class Bishop(Piece):
+    def __init__(self, row, col, colour):
+        Piece.__init__(self, row, col, colour)
+        self.type = BISHOP
+
+    def __str__(self):
+        return BISHOP
+    
+    def get_type(self):
+        return self.type
+    
+    def available_moves(self, board):
+        moves = []
+
+        row = self.row
+        col = self.col
+        
+        def bishop_move_checker(bishop, board, start_row, start_col, row_iter, col_iter):
+            moves = []
+            
+            row = start_row + row_iter
+            col = start_col + col_iter
+            while row in range(8) and col in range(8):
+                target_piece = board.get_piece(row, col)
+
+                if target_piece is None:
+                    moves.append((row, col))
+                else:
+                    if target_piece.get_colour() != bishop.colour:
+                        moves.append((row, col))
+                    break
+
+                row += row_iter
+                col += col_iter
+            return moves
+        
+        moves += bishop_move_checker(self, board, row, col, UP, RIGHT)
+        moves += bishop_move_checker(self, board, row, col, UP, LEFT)
+        moves += bishop_move_checker(self, board, row, col, DOWN, RIGHT)
+        moves += bishop_move_checker(self, board, row, col, DOWN, LEFT)
+    
         return moves
 
 class King(Piece):
@@ -155,6 +211,12 @@ class Board:
         self.grid[0][6] = Knight(0, 6, WHITE)
         self.grid[7][1] = Knight(7, 1, BLACK)
         self.grid[7][6] = Knight(7, 6, BLACK)
+
+        # Bishops
+        self.grid[0][2] = Bishop(0, 2, WHITE)
+        self.grid[0][5] = Bishop(0, 5, WHITE)
+        self.grid[7][2] = Bishop(7, 2, BLACK)
+        self.grid[7][5] = Bishop(7, 5, BLACK)
 
         # Kings
         self.white_king = King(0, 4, WHITE)
