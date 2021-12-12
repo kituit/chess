@@ -27,11 +27,20 @@ VALUES = {
     KING: 1000
 }
 
+HORIZONTALS = [(LEFT, 0), (RIGHT, 0)]
+VERTICALS = [(0, UP), (0, DOWN)]
+DIAGONALS = [(LEFT, UP), (RIGHT, UP), (LEFT, DOWN), (RIGHT, DOWN)]
+
 def clear_console():
     command = 'clear'
     if os.name in ('nt', 'dos'):  # If Machine is running on Windows, use cls
         command = 'cls'
     os.system(command)
+
+def in_bounds(pos):
+    if pos[ROW] in range(8) and pos[COL] in range(8):
+        return True
+    return False
 
 class Piece:
     def __init__(self, pos, type, colour):
@@ -43,7 +52,7 @@ class Piece:
         return self.type
 
     def set_pos(self, pos):
-        if pos[ROW] not in range(8) or pos[COL] not in range(8):
+        if not in_bounds(pos):
             raise ValueError("Row/Col must be between 0 and 8")
         self.pos = pos
 
@@ -56,6 +65,25 @@ class Piece:
     def get_type(self):
         return self.type
 
+    def moves_in_line(self, board, increments):
+        moves = []
+        for col_iter, row_iter in increments:
+            row = self.pos[ROW] + row_iter
+            col = self.pos[COL] + col_iter
+            while in_bounds((row, col)):
+                target_piece = board.get_piece(row, col)
+                if target_piece is None:
+                    moves.append((row, col))
+                else:
+                    if target_piece.get_colour() != self.colour:
+                        moves.append((row, col))
+                    break
+                row += row_iter
+                col += col_iter
+        
+        return moves
+
+
 
 class Pawn(Piece):
     def __init__(self, pos, colour):
@@ -67,7 +95,6 @@ class Pawn(Piece):
         moves = []
         next_row = self.pos[ROW] + self.__direction
         col = self.pos[COL]
-        print(next_row, self.pos[COL])
         if next_row in range(8):
 
             # Moving pawn forward if nothing in front of it
@@ -105,12 +132,12 @@ class Knight(Piece):
                         (row + 2, col - 1), (row - 1, col + 2), (row - 1, col - 2),
                         (row - 2, col + 1), (row - 2, col - 1)]
 
-        for trial_row, trial_col in KNIGHT_MOVES:
-            if trial_row in range(8) and trial_col in range(8):
-                piece = board.get_piece(trial_row, trial_col)
+        for trial_pos in KNIGHT_MOVES:
+            if in_bounds(trial_pos):
+                piece = board.get_piece(trial_pos[ROW], trial_pos[COL])
 
                 if piece is None or piece.get_colour() != self.colour:
-                    moves.append((trial_row, trial_col))
+                    moves.append(trial_pos)
 
         return moves
 
@@ -119,112 +146,21 @@ class Bishop(Piece):
         Piece.__init__(self, pos, BISHOP, colour)
     
     def available_moves(self, board):
-        moves = []
-
-        row = self.pos[ROW]
-        col = self.pos[COL]
-        
-        def bishop_move_checker(bishop, board, start_row, start_col, row_iter, col_iter):
-            moves = []
-            
-            row = start_row + row_iter
-            col = start_col + col_iter
-            while row in range(8) and col in range(8):
-                target_piece = board.get_piece(row, col)
-
-                if target_piece is None:
-                    moves.append((row, col))
-                else:
-                    if target_piece.get_colour() != bishop.colour:
-                        moves.append((row, col))
-                    break
-
-                row += row_iter
-                col += col_iter
-            return moves
-        
-        moves += bishop_move_checker(self, board, row, col, UP, RIGHT)
-        moves += bishop_move_checker(self, board, row, col, UP, LEFT)
-        moves += bishop_move_checker(self, board, row, col, DOWN, RIGHT)
-        moves += bishop_move_checker(self, board, row, col, DOWN, LEFT)
-    
-        return moves
+        return self.moves_in_line(board, DIAGONALS)
 
 class Rook(Piece):
     def __init__(self, pos, colour):
         Piece.__init__(self, pos, ROOK, colour)
     
     def available_moves(self, board):
-        moves = []
-
-        row = self.pos[ROW]
-        col = self.pos[COL]
-        
-        def rook_move_checker(bishop, board, start_row, start_col, row_iter, col_iter):
-            moves = []
-            
-            row = start_row + row_iter
-            col = start_col + col_iter
-            while row in range(8) and col in range(8):
-                target_piece = board.get_piece(row, col)
-
-                if target_piece is None:
-                    moves.append((row, col))
-                else:
-                    if target_piece.get_colour() != bishop.colour:
-                        moves.append((row, col))
-                    break
-
-                row += row_iter
-                col += col_iter
-            return moves
-        
-        moves += rook_move_checker(self, board, row, col, UP, 0)
-        moves += rook_move_checker(self, board, row, col, DOWN, 0)
-        moves += rook_move_checker(self, board, row, col, 0, LEFT)
-        moves += rook_move_checker(self, board, row, col, 0, RIGHT)
-    
-        return moves
+        return self.moves_in_line(board, HORIZONTALS + VERTICALS)
 
 class Queen(Piece):
     def __init__(self, pos, colour):
         Piece.__init__(self, pos, QUEEN, colour)
     
     def available_moves(self, board):
-        moves = []
-
-        row = self.pos[ROW]
-        col = self.pos[COL]
-        
-        def queen_move_checker(bishop, board, start_row, start_col, row_iter, col_iter):
-            moves = []
-            
-            row = start_row + row_iter
-            col = start_col + col_iter
-            while row in range(8) and col in range(8):
-                target_piece = board.get_piece(row, col)
-
-                if target_piece is None:
-                    moves.append((row, col))
-                else:
-                    if target_piece.get_colour() != bishop.colour:
-                        moves.append((row, col))
-                    break
-
-                row += row_iter
-                col += col_iter
-            return moves
-        
-        moves += queen_move_checker(self, board, row, col, UP, RIGHT)
-        moves += queen_move_checker(self, board, row, col, UP, 0)
-        moves += queen_move_checker(self, board, row, col, UP, LEFT)
-        moves += queen_move_checker(self, board, row, col, DOWN, RIGHT)
-        moves += queen_move_checker(self, board, row, col, DOWN, 0)
-        moves += queen_move_checker(self, board, row, col, DOWN, LEFT)
-        moves += queen_move_checker(self, board, row, col, 0, LEFT)
-        moves += queen_move_checker(self, board, row, col, 0, RIGHT)
-    
-        return moves
+        return self.moves_in_line(board, HORIZONTALS + VERTICALS + DIAGONALS)
 
 class King(Piece):
     def __init__(self, pos, colour):
@@ -284,15 +220,13 @@ class Board:
         self.white_pieces = []
         for row in self.grid[0:2]:
             for piece in row:
-                if piece is not None:
-                    self.white_pieces.append(piece)
+                self.white_pieces.append(piece)
         self.white_pieces.sort(key= lambda piece: VALUES[piece.get_type()], reverse= True)
 
         self.black_pieces = []
         for row in self.grid[6:8]:
             for piece in row:
-                if piece is not None:
-                    self.black_pieces.append(piece)
+                self.black_pieces.append(piece)
         self.black_pieces.sort(key= lambda piece: VALUES[piece.get_type()], reverse= True)
 
         self.turn = 0
