@@ -1,4 +1,4 @@
-# Hello World
+import os
 
 UP = 1
 DOWN = -1
@@ -11,14 +11,24 @@ WHITE = "White"
 PAWN = "P"
 KNIGHT = "k"
 BISHOP = "B"
+ROOK = "R"
+QUEEN = "Q"
 KING = "K"
 
 VALUES = {
     PAWN: 1,
     KNIGHT: 3,
     BISHOP: 3,
+    ROOK: 5,
+    QUEEN: 9,
     KING: 1000
 }
+
+def clear_console():
+    command = 'clear'
+    if os.name in ('nt', 'dos'):  # If Machine is running on Windows, use cls
+        command = 'cls'
+    os.system(command)
 
 class Piece:
     def __init__(self, pos_row, pos_col, colour):
@@ -43,14 +53,14 @@ class Piece:
 class Pawn(Piece):
     def __init__(self, row, col, colour):
         Piece.__init__(self, row, col, colour)
-        self.type = PAWN
-        self.has_moved = False
+        self.__type = PAWN
+        self.__has_moved = False
 
     def __str__(self):
         return PAWN
 
     def get_type(self):
-        return self.type
+        return self.__type
 
     def available_moves(self, board):
 
@@ -65,8 +75,8 @@ class Pawn(Piece):
                 moves.append((next_row, self.col))
             
             # Moving pawn 2 places forward if nothing in front of it and has not yet moved
-            if board.get_piece(next_row + 1, self.col) is None and not self.has_moved:
-                moves.append((next_row + 1, self.col))
+            if board.get_piece(next_row + (-1 if self.colour == BLACK else 1), self.col) is None and not self.__has_moved:
+                moves.append((next_row + (-1 if self.colour == BLACK else 1), self.col))
                 self.has_moved = True
 
             # Moving pawn diagonally forward left if there is an enemy piece there
@@ -85,13 +95,13 @@ class Pawn(Piece):
 class Knight(Piece):
     def __init__(self, row, col, colour):
         Piece.__init__(self, row, col, colour)
-        self.type = KNIGHT
+        self.__type = KNIGHT
 
     def __str__(self):
         return KNIGHT
 
     def get_type(self):
-        return self.type
+        return self.__type
 
     def available_moves(self, board):
         moves = []
@@ -114,13 +124,13 @@ class Knight(Piece):
 class Bishop(Piece):
     def __init__(self, row, col, colour):
         Piece.__init__(self, row, col, colour)
-        self.type = BISHOP
+        self.__type = BISHOP
 
     def __str__(self):
         return BISHOP
     
     def get_type(self):
-        return self.type
+        return self.__type
     
     def available_moves(self, board):
         moves = []
@@ -154,16 +164,106 @@ class Bishop(Piece):
     
         return moves
 
+class Rook(Piece):
+    def __init__(self, row, col, colour):
+        Piece.__init__(self, row, col, colour)
+        self.__type = ROOK
+
+    def __str__(self):
+        return ROOK
+    
+    def get_type(self):
+        return self.__type
+    
+    def available_moves(self, board):
+        moves = []
+
+        row = self.row
+        col = self.col
+        
+        def rook_move_checker(bishop, board, start_row, start_col, row_iter, col_iter):
+            moves = []
+            
+            row = start_row + row_iter
+            col = start_col + col_iter
+            while row in range(8) and col in range(8):
+                target_piece = board.get_piece(row, col)
+
+                if target_piece is None:
+                    moves.append((row, col))
+                else:
+                    if target_piece.get_colour() != bishop.colour:
+                        moves.append((row, col))
+                    break
+
+                row += row_iter
+                col += col_iter
+            return moves
+        
+        moves += rook_move_checker(self, board, row, col, UP, 0)
+        moves += rook_move_checker(self, board, row, col, DOWN, 0)
+        moves += rook_move_checker(self, board, row, col, 0, LEFT)
+        moves += rook_move_checker(self, board, row, col, 0, RIGHT)
+    
+        return moves
+
+class Queen(Piece):
+    def __init__(self, row, col, colour):
+        Piece.__init__(self, row, col, colour)
+        self.__type = QUEEN
+
+    def __str__(self):
+        return QUEEN
+    
+    def get_type(self):
+        return self.__type
+    
+    def available_moves(self, board):
+        moves = []
+
+        row = self.row
+        col = self.col
+        
+        def queen_move_checker(bishop, board, start_row, start_col, row_iter, col_iter):
+            moves = []
+            
+            row = start_row + row_iter
+            col = start_col + col_iter
+            while row in range(8) and col in range(8):
+                target_piece = board.get_piece(row, col)
+
+                if target_piece is None:
+                    moves.append((row, col))
+                else:
+                    if target_piece.get_colour() != bishop.colour:
+                        moves.append((row, col))
+                    break
+
+                row += row_iter
+                col += col_iter
+            return moves
+        
+        moves += queen_move_checker(self, board, row, col, UP, RIGHT)
+        moves += queen_move_checker(self, board, row, col, UP, 0)
+        moves += queen_move_checker(self, board, row, col, UP, LEFT)
+        moves += queen_move_checker(self, board, row, col, DOWN, RIGHT)
+        moves += queen_move_checker(self, board, row, col, DOWN, 0)
+        moves += queen_move_checker(self, board, row, col, DOWN, LEFT)
+        moves += queen_move_checker(self, board, row, col, 0, LEFT)
+        moves += queen_move_checker(self, board, row, col, 0, RIGHT)
+    
+        return moves
+
 class King(Piece):
     def __init__(self, row, col, colour):
         Piece.__init__(self, row, col, colour)
-        self.type = KING
+        self.__type = KING
 
     def __str__(self):
         return KING
 
     def get_type(self):
-        return self.type
+        return self.__type
     
     def available_moves(self, board):
         moves = []
@@ -218,6 +318,16 @@ class Board:
         self.grid[7][2] = Bishop(7, 2, BLACK)
         self.grid[7][5] = Bishop(7, 5, BLACK)
 
+        # Rooks
+        self.grid[0][0] = Rook(0, 0, WHITE)
+        self.grid[0][7] = Rook(0, 7, WHITE)
+        self.grid[7][0] = Rook(7, 0, BLACK)
+        self.grid[7][7] = Rook(7, 7, BLACK)
+
+        # Queens
+        self.grid[0][3] = Queen(0, 3, WHITE)
+        self.grid[7][3] = Queen(7, 3, BLACK)
+
         # Kings
         self.white_king = King(0, 4, WHITE)
         self.grid[0][4] = self.white_king
@@ -237,6 +347,13 @@ class Board:
                 if piece is not None:
                     self.black_pieces.append(piece)
         self.black_pieces.sort(key= lambda piece: VALUES[piece.get_type()], reverse= True)
+
+        self.turn = 0
+        self.check  = {
+            WHITE: False,
+            BLACK: False
+        }
+        self.winner = None
 
     def __str__(self):
         grid_str = ""
@@ -262,7 +379,14 @@ class Board:
         return [f"{piece.get_type()} {piece.curr_pos()}" for piece in pieces]        
 
     def move_piece(self, curr_row, curr_col, new_row, new_col):
+        if not all([_ in range(8) for _ in [curr_row, curr_col, new_row, new_col]]):
+            raise ValueError("Coordinates not between 0 and 7")
+        
         piece = self.grid[curr_row][curr_col]
+        player = WHITE if self.turn % 2 == 0 else BLACK
+        
+        if piece.get_colour() != player:
+            raise ValueError("Cannot move an opponents piece")
 
         if (new_row, new_col) not in piece.available_moves(self):
             raise ValueError("Move not valid")
@@ -273,10 +397,51 @@ class Board:
                 self.black_pieces.remove(target_piece)
             else:
                 self.white_pieces.remove(target_piece)
+        
+
+        
+        
+        # If you are in check your next move has to take you out of check
+        # If you are in check mate, you lose
+
+        temp_new = self.grid[new_row][new_col]
 
         piece.set_pos(new_row, new_col)
         self.grid[curr_row][curr_col] = None
         self.grid[new_row][new_col] = piece
+
+
+
+        # Check
+
+        player_in_check_last_round = self.check[player]
+        player_in_check_this_round = self.white_king.is_in_check(self)
+
+        # If you started the turn already in check, then you have to take youself out of check
+        if player_in_check_last_round and player_in_check_this_round:
+            self.grid[curr_row][curr_col] = piece
+            self.grid[new_row][new_col] = temp_new
+            piece.set_pos(curr_row, curr_col)
+            raise ValueError("Player must take themself out of check")
+        
+        # Cannot do a move that results in yourself being put in check
+        if player_in_check_this_round:
+            self.grid[curr_row][curr_col] = piece
+            self.grid[new_row][new_col] = temp_new
+            piece.set_pos(curr_row, curr_col)
+            raise ValueError("Player cannot put themselves in check")
+        
+
+        self.check[WHITE] = player_in_check_this_round
+        self.check[BLACK] = self.black_king.is_in_check(self)
+
+        # Checking if either player is in checkmate
+        if self.check[WHITE] and len(self.white_king.available_moves()) == 0:
+            self.winner = BLACK
+        if self.check[BLACK] and len(self.black_king.available_moves()) == 0:
+            self.winner = WHITE
+
+        self.turn += 1
 
     def piece_at_pos(self, row, col):
         if self.grid[row][col] is None:
@@ -287,25 +452,32 @@ class Board:
     def get_piece(self, row, col):
         return self.grid[row][col]
 
+    def whose_turn(self):
+        if self.turn % 2 == 0:
+            return WHITE
+        else:
+            return BLACK
+
 
 if __name__ == '__main__':
     b = Board()
-    print(b)
 
-    print("==========")
-
-    while True:
-        print("Piece:")
-        curr_row = int(input("Row: "))
-        curr_col = int(input("Col: "))
-        print(f"{b.piece_at_pos(curr_row, curr_col)} - Move:")
-        new_row = int(input("Row: "))
-        new_col = int(input("Col: "))
+    while b.winner is None:
+        #clear_console()
+        print("==========")
+        print(b)
+        print(f"White - {b.get_pieces_str(WHITE)}, Black - {b.get_pieces_str(BLACK)}")
 
         try:
-            b.move_piece(curr_row, curr_col, new_row, new_col)
-            print(b)
-            print(f"White pieces: {b.get_pieces_str(WHITE)}, Black pieces: {b.get_pieces_str(BLACK)}")
-            print(f"Check: White - {b.white_king.is_in_check(b)}, Black - {b.black_king.is_in_check(b)}")
-        except:
-            print("Invalid move")
+            input1 = input(f"Player {b.whose_turn()} - Enter current row/col: ").split()
+            curr_row, curr_col = int(input1[0]), int(input1[1])
+            input2 = input(f"{b.piece_at_pos(curr_row, curr_col)} - Move to row/col: ").split()
+            new_row, new_col = int(input2[0]), int(input2[1])
+            try:
+                b.move_piece(curr_row, curr_col, new_row, new_col)
+            except ValueError:
+                print("Invalid move")
+        except (ValueError, IndexError):
+            print("Please enter 2 numbers for row/col coordinates")
+    
+    print(f"Congrats {b.winner}, you win!!!")
