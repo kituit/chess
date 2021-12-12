@@ -107,12 +107,12 @@ class Pawn(Piece):
                 self.has_moved = True
 
             # Moving pawn diagonally forward left if there is an enemy piece there
-            if (col - 1 in range(8) and board.get_piece(next_row, col - 1) is not None
+            if (col + LEFT in range(8) and board.get_piece(next_row, col - 1) is not None
                     and board.get_piece(next_row, col - 1).get_colour() != self.colour):
                 moves.append((next_row, col - 1))
 
             # Moving pawn diagonally forward right if there is an enemy piece there
-            if (col + 1 in range(8) and board.get_piece(next_row, col + 1) is not None
+            if (col + RIGHT in range(8) and board.get_piece(next_row, col + 1) is not None
                     and board.get_piece(next_row, col + 1).get_colour() != self.colour):
                 moves.append((next_row, col + 1))
 
@@ -231,8 +231,8 @@ class Board:
 
         self.turn = 0
         self.check  = {
-            WHITE: False,
-            BLACK: False
+            WHITE: {'in_check': False, 'pieces_causing_check': []},
+            BLACK: {'in_check': False, 'pieces_causing_check': []}
         }
         self.winner = None
 
@@ -250,35 +250,43 @@ class Board:
         return grid_str
     
     def get_pieces(self, colour):
-        if colour == BLACK:
-            return self.black_pieces
-        else:
-            return self.white_pieces
+        return self.white_pieces if colour == WHITE else self.black_pieces
     
     def get_pieces_str(self, colour):
         pieces = self.white_pieces if colour == WHITE else self.black_pieces
         return [f"{piece.get_type()} {piece.get_pos()}" for piece in pieces]        
 
     def move_piece(self, curr_row, curr_col, new_row, new_col):
-        if not all([_ in range(8) for _ in [curr_row, curr_col, new_row, new_col]]):
+        if not (in_bounds((curr_row, curr_col)) and in_bounds((new_row, new_col))):
             raise ValueError("Coordinates not between 0 and 7")
         
         piece = self.grid[curr_row][curr_col]
-        player = WHITE if self.turn % 2 == 0 else BLACK
+
+        if piece is None:
+            raise ValueError("No piece selected")
+
+        player = self.whose_turn()
         
         if piece.get_colour() != player:
             raise ValueError("Cannot move an opponents piece")
 
-        print(piece.available_moves(self))
         if (new_row, new_col) not in piece.available_moves(self):
             raise ValueError("Move not valid")
         
         target_piece = self.grid[new_row][new_col]
+        
+        # Capture opposing target_piece
         if target_piece is not None:
             if target_piece.get_colour() == BLACK:
                 self.black_pieces.remove(target_piece)
+                if piece in self.check[WHITE]['pieces_causing_check']:
+                    self.check[WHITE]['pieces_causing_check'].remove(piece)
+                    self.check[WHITE]['in_check'] = len(self.check[WHITE]['pieces_causing_check']) > 1
             else:
                 self.white_pieces.remove(target_piece)
+                if piece in self.check[BLACK]['pieces_causing_check']:
+                    self.check[BLACK]['pieces_causing_check'].remove(piece)
+                    self.check[BLACK]['in_check'] = len(self.check[BLACK]['pieces_causing_check']) > 1
         
         # # If you are in check your next move has to take you out of check
         # # If you are in check mate, you lose
@@ -290,9 +298,15 @@ class Board:
         self.grid[new_row][new_col] = piece
 
 
-
-        # # Check
-
+        # Place Oppossing King in Check
+        new_available_moves = piece.available_moves(self)
+        if piece.get_colour() == WHITE and self.black_king.get_pos() in new_available_moves:
+            self.check[BLACK]['in_check'] = True
+            self.check[BLACK]['pieces_causing_check'].append(piece)
+        elif piece.get_colour() == BLACK and self.white_king.get_pos() in new_available_moves:
+            self.check[WHITE]['in_check'] = True
+            self.check[WHITE]['pieces_causing_check'].append(piece)
+        
         # player_in_check_last_round = self.check[player]
         # player_in_check_this_round = self.white_king.is_in_check(self)
 
