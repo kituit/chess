@@ -1,4 +1,5 @@
 import os
+import copy 
 
 UP = -1
 DOWN = 1
@@ -204,30 +205,37 @@ class King(Piece):
 
 class Board:
     def __init__(self):
+        
+        # Create 8 x 8 Grid 
         self.grid = [[None for x in range(8)] for y in range(8)]
 
         # Pawns
         self.grid[1] = [Pawn((1, x), WHITE) for x in range(8)]
         self.grid[6] = [Pawn((6, x), BLACK) for x in range(8)]
 
+        # Remaining Pieces
         pieces = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook]
         self.grid[0] = [piece((0, index), WHITE) for index, piece in enumerate(pieces)]
         self.grid[7] = [piece((7, index), BLACK) for index, piece in enumerate(pieces)]
         
-        self.white_king = self.grid[0][4]
-        self.black_king = self.grid[7][4]
+        self.king = {
+            WHITE: self.grid[0][4],
+            BLACK: self.grid[7][4]
+        }
 
-        self.white_pieces = []
+        self.pieces = {
+            WHITE: [],
+            BLACK: []
+        }
         for row in self.grid[0:2]:
             for piece in row:
-                self.white_pieces.append(piece)
-        self.white_pieces.sort(key= lambda piece: VALUES[piece.get_type()], reverse= True)
+                self.pieces[WHITE].append(piece)
+        self.pieces[WHITE].sort(key= lambda piece: VALUES[piece.get_type()], reverse= True)
 
-        self.black_pieces = []
         for row in self.grid[6:8]:
             for piece in row:
-                self.black_pieces.append(piece)
-        self.black_pieces.sort(key= lambda piece: VALUES[piece.get_type()], reverse= True)
+                self.pieces[BLACK].append(piece)
+        self.pieces[BLACK].sort(key= lambda piece: VALUES[piece.get_type()], reverse= True)
 
         self.turn = 0
         self.check  = {
@@ -250,10 +258,10 @@ class Board:
         return grid_str
     
     def get_pieces(self, colour):
-        return self.white_pieces if colour == WHITE else self.black_pieces
+        return self.pieces[colour]
     
     def get_pieces_str(self, colour):
-        pieces = self.white_pieces if colour == WHITE else self.black_pieces
+        pieces = self.pieces[colour]
         return [f"{piece.get_type()} {piece.get_pos()}" for piece in pieces]        
 
     def move_piece(self, curr_row, curr_col, new_row, new_col):
@@ -266,6 +274,7 @@ class Board:
             raise ValueError("No piece selected")
 
         player = self.whose_turn()
+        opponent = BLACK if player == WHITE else WHITE
         
         if piece.get_colour() != player:
             raise ValueError("Cannot move an opponents piece")
@@ -274,24 +283,22 @@ class Board:
             raise ValueError("Move not valid")
         
         target_piece = self.grid[new_row][new_col]
+
+        if target_piece.get_colour() == player:
+            raise ValueError("Cannot capture your own piece")
         
+        temp_grid = copy.deepcopy(self.grid)
+
         # Capture opposing target_piece
         if target_piece is not None:
-            if target_piece.get_colour() == BLACK:
-                self.black_pieces.remove(target_piece)
-                if piece in self.check[WHITE]['pieces_causing_check']:
-                    self.check[WHITE]['pieces_causing_check'].remove(piece)
-                    self.check[WHITE]['in_check'] = len(self.check[WHITE]['pieces_causing_check']) > 1
-            else:
-                self.white_pieces.remove(target_piece)
-                if piece in self.check[BLACK]['pieces_causing_check']:
-                    self.check[BLACK]['pieces_causing_check'].remove(piece)
-                    self.check[BLACK]['in_check'] = len(self.check[BLACK]['pieces_causing_check']) > 1
-        
+            self.pieces[opponent].remove(target_piece)
+            if target_piece in self.check[player]['pieces_causing_check']:
+                self.check[player]['pieces_causing_check'.remove(target_piece)]
+                self.check[player]['in_check'] = len(self.check[player]['pieces_causing_check']) > 1
+
         # # If you are in check your next move has to take you out of check
         # # If you are in check mate, you lose
 
-        # temp_new = self.grid[new_row][new_col]
 
         piece.set_pos((new_row, new_col))
         self.grid[curr_row][curr_col] = None
@@ -300,7 +307,7 @@ class Board:
 
         # Place Oppossing King in Check
         new_available_moves = piece.available_moves(self)
-        if piece.get_colour() == WHITE and self.black_king.get_pos() in new_available_moves:
+        if piece.get_colour() == WHITE and self.king[BLACK].get_pos() in new_available_moves:
             self.check[BLACK]['in_check'] = True
             self.check[BLACK]['pieces_causing_check'].append(piece)
         elif piece.get_colour() == BLACK and self.white_king.get_pos() in new_available_moves:
@@ -308,7 +315,7 @@ class Board:
             self.check[WHITE]['pieces_causing_check'].append(piece)
         
         # player_in_check_last_round = self.check[player]
-        # player_in_check_this_round = self.white_king.is_in_check(self)
+        # player_in_check_this_round = self.king[WHITE].is_in_check(self)
 
         # # If you started the turn already in check, then you have to take youself out of check
         # if player_in_check_last_round and player_in_check_this_round:
@@ -351,6 +358,8 @@ class Board:
         else:
             return BLACK
 
+    def is_in_check(self, colour):
+        return self.check[colour]['in_check']
 
 if __name__ == '__main__':
     b = Board()
@@ -360,6 +369,7 @@ if __name__ == '__main__':
         print("==========")
         print(b)
         print(f"White - {b.get_pieces_str(WHITE)}, Black - {b.get_pieces_str(BLACK)}")
+        print(f"Check: White - {b.is_in_check(WHITE)}, Black - {b.is_in_check(BLACK)}")
 
         # try:
         input1 = input(f"Player {b.whose_turn()} - Enter current row/col: ").split()
