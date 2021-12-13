@@ -38,29 +38,58 @@ def in_bounds(pos):
         return True
     return False
 
+
 def difference_in_pos(pos1, pos2):
     return (pos1[ROW] - pos2[ROW], pos1[COL] - pos2[COL])
+
 
 def get_direction_vector(pos1, pos2):
     row_vector = pos2[ROW] - pos1[ROW]
     col_vector = pos2[COL] - pos1[COL]
-    
+
     if row_vector == col_vector == 0:
         return (0, 0)
-    
-    return (int(row_vector / max(abs(row_vector), abs(col_vector))), int(col_vector / max(abs(row_vector), abs(col_vector))))
 
-# Checks if pos3 is on line between pos1 and pos2 
+    return (int(row_vector / max(abs(row_vector), abs(col_vector))),
+            int(col_vector / max(abs(row_vector), abs(col_vector))))
+
+
+def same_sign(a, b):
+    return (a < 0 and b < 0) or (a >= 0 and b >= 0)
+
+
+def get_direction_vector_float(pos1, pos2):
+    row_vector = pos2[ROW] - pos1[ROW]
+    col_vector = pos2[COL] - pos1[COL]
+
+    if row_vector == col_vector == 0:
+        return (0, 0)
+
+    return (row_vector / max(abs(row_vector), abs(col_vector)),
+            col_vector / max(abs(row_vector), abs(col_vector)))
+
+
+# Checks if pos3 is on line between pos1 and pos2
 def in_line(pos1, pos2, pos3):
-    if ((pos1[ROW] <= pos3[ROW] <= pos2[ROW] or pos2[ROW] <= pos3[ROW] <= pos1[ROW]) and 
-        (pos1[COL] <= pos3[COL] <= pos2[COL] or pos2[COL] <= pos3[COL] <= pos1[COL])):
-        pos2_vector = get_direction_vector(pos1, pos2)
-        pos3_vector = get_direction_vector(pos1, pos3)
-        
-        if (pos3[ROW] - pos1[ROW] % 2 == pos2[ROW] - pos1[ROW] % 2 and 
-            pos3[COL] - pos1[COL] % 2 == pos2[COL] - pos1[COL] % 2):
+    if ((pos1[ROW] <= pos3[ROW] <= pos2[ROW] or pos2[ROW] <= pos3[ROW] <= pos1[ROW])
+            and (pos1[COL] <= pos3[COL] <= pos2[COL] or pos2[COL] <= pos3[COL] <= pos1[COL])):
+        direction_pos1_pos2 = difference_in_pos(pos1, pos2)
+        direction_pos1_pos3 = difference_in_pos(pos1, pos3)
+
+        # E.g pos1 = (5, 5), pos2 = (8, 8), pos3 = (7, 7)
+
+        # In horizontal/vertical line
+        if direction_pos1_pos3[ROW] == direction_pos1_pos2[ROW] == 0 or direction_pos1_pos3[
+                COL] == direction_pos1_pos2[COL] == 0:
             return True
+
+        # In diagonal line
+        if direction_pos1_pos3[ROW] == direction_pos1_pos3[COL] and direction_pos1_pos2[
+                ROW] == direction_pos1_pos2[COL]:
+            return True
+
     return False
+
 
 def list_intersection(l1, l2):
     temp = set(l2)
@@ -142,24 +171,51 @@ class Piece:
             target_piece = board.get_piece(row, col)
             if target_piece is not None:
                 if target_piece.get_colour() == opponent and (
-                        (target_piece.get_type() in [BISHOP, QUEEN] and direction in DIAGONALS)
-                        or (target_piece.get_type() in [ROOK, QUEEN]
-                        and direction in HORIZONTALS + VERTICALS)):
+                    (target_piece.get_type() in [BISHOP, QUEEN] and direction in DIAGONALS) or
+                    (target_piece.get_type() in [ROOK, QUEEN]
+                     and direction in HORIZONTALS + VERTICALS)):
                     return (row, col)
                 break
             row += found_row_iter
             col += found_col_iter
-        
+
         # If in line of sight of King but not protecting from anything
         return (None, None)
-    
+
     def filter_moves_to_protect_king(self, moves, board):
         # In case that is protecting King, filters out moves that would leave King exposed
-        movement_vector = get_direction_vector(board.king[self.get_colour()].get_pos(), self.get_pos())
+        movement_vector = get_direction_vector(board.king[self.get_colour()].get_pos(),
+                                               self.get_pos())
         negative_movement_vector = (-1 * movement_vector[ROW], -1 * movement_vector[COL])
-        positions_in_line_with_king = self.moves_in_line(board, [movement_vector, negative_movement_vector])
+        positions_in_line_with_king = self.moves_in_line(
+            board, [movement_vector, negative_movement_vector])
         return list_intersection(moves, positions_in_line_with_king)
 
+
+# TODO: Fix issue with double check, where moving one of your pieces may lead to discovered check in which another one of your piece causes check
+# Fix: use similar code to protecting King, in which we have to see if one of your pieces is protecting opposing King from another one of your pieces
+
+# Is assuming piece isn't a king because otherwise would be an unneccesary filter as Kings already move to get themselves out of check
+
+    def filter_moves_to_stop_check(self, moves, board):
+        filtered_moves = []
+
+        # In double check, pieces can't stop chess by capturing or blocking, has to be from movement from King
+        if len(board.check[self.get_colour()]['pieces_causing_check']) > 1:
+            return []
+
+        opposing_piece = board.check[self.get_colour()]['pieces_causing_check'][0]
+        for move in moves:
+            # Capture piece that is causing check
+            if move == opposing_piece.get_pos():
+                filtered_moves.append(move)
+            # Block piece, note cannot block a check caused by a Knight
+            elif opposing_piece.get_type() != KNIGHT:
+                if in_line(opposing_piece.get_pos(), board.king[self.get_colour()].get_pos(),
+                           move):
+                    filtered_moves.append(move)
+
+        return filtered_moves
 
 
 class Pawn(Piece):
@@ -196,7 +252,11 @@ class Pawn(Piece):
         # In case that is protecting King, filters out moves that would leave King exposed
         protecting_king_from_piece = self.protecting_king(board)
         if protecting_king_from_piece is not (None, None):
-            return self.filter_moves_to_protect_king(moves, board)
+            moves = self.filter_moves_to_protect_king(moves, board)
+
+        # In the case that is in check, any move has to be one that takes out of check
+        if board.check[self.get_colour()]['in_check']:
+            moves = self.filter_moves_to_stop_check(moves, board)
 
         return moves
 
@@ -224,6 +284,10 @@ class Knight(Piece):
                 if piece is None or piece.get_colour() != self.colour:
                     moves.append(trial_pos)
 
+        # In the case that is in check, any move has to be one that takes out of check
+        if board.check[self.get_colour()]['in_check']:
+            moves = self.filter_moves_to_stop_check(moves, board)
+
         return moves
 
 
@@ -237,8 +301,12 @@ class Bishop(Piece):
         # In case that is protecting King, filters out moves that would leave King exposed
         protecting_king_from_piece = self.protecting_king(board)
         if protecting_king_from_piece is not (None, None):
-            return self.filter_moves_to_protect_king(moves, board)
-        
+            moves = self.filter_moves_to_protect_king(moves, board)
+
+        # In the case that is in check, any move has to be one that takes out of check
+        if board.check[self.get_colour()]['in_check']:
+            moves = self.filter_moves_to_stop_check(moves, board)
+
         return moves
 
 
@@ -252,8 +320,12 @@ class Rook(Piece):
         # In case that is protecting King, filters out moves that would leave King exposed
         protecting_king_from_piece = self.protecting_king(board)
         if protecting_king_from_piece is not (None, None):
-            return self.filter_moves_to_protect_king(moves, board)
-        
+            moves = self.filter_moves_to_protect_king(moves, board)
+
+        # In the case that is in check, any move has to be one that takes out of check
+        if board.check[self.get_colour()]['in_check']:
+            moves = self.filter_moves_to_stop_check(moves, board)
+
         return moves
 
 
@@ -267,8 +339,12 @@ class Queen(Piece):
         # In case that is protecting King, filters out moves that would leave King exposed
         protecting_king_from_piece = self.protecting_king(board)
         if protecting_king_from_piece is not (None, None):
-            return self.filter_moves_to_protect_king(moves, board)
-        
+            moves = self.filter_moves_to_protect_king(moves, board)
+
+        # In the case that is in check, any move has to be one that takes out of check
+        if board.check[self.get_colour()]['in_check']:
+            moves = self.filter_moves_to_stop_check(moves, board)
+
         return moves
 
 
