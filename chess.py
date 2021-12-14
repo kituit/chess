@@ -21,9 +21,9 @@ KING = "K"
 
 VALUES = {PAWN: 1, KNIGHT: 3, BISHOP: 3, ROOK: 5, QUEEN: 9, KING: 1000}
 
-HORIZONTALS = [(LEFT, 0), (RIGHT, 0)]
-VERTICALS = [(0, UP), (0, DOWN)]
-DIAGONALS = [(LEFT, UP), (RIGHT, UP), (LEFT, DOWN), (RIGHT, DOWN)]
+HORIZONTALS = [(0, LEFT), (0, RIGHT)]
+VERTICALS = [(UP, 0), (DOWN, 0)]
+DIAGONALS = [(UP, LEFT), (UP, RIGHT), (DOWN, LEFT), (DOWN, RIGHT)]
 
 
 def clear_console():
@@ -119,9 +119,9 @@ class Piece:
     def get_type(self):
         return self.type
 
-    def moves_in_line(self, board, increments):
+    def moves_in_line(self, board, increments, include_protections= False):
         moves = []
-        for col_iter, row_iter in increments:
+        for row_iter, col_iter in increments:
             row = self.pos[ROW] + row_iter
             col = self.pos[COL] + col_iter
             while in_bounds((row, col)):
@@ -129,7 +129,7 @@ class Piece:
                 if target_piece is None:
                     moves.append((row, col))
                 else:
-                    if target_piece.get_colour() != self.colour:
+                    if target_piece.get_colour() != self.colour or include_protections:
                         moves.append((row, col))
                     break
                 row += row_iter
@@ -142,7 +142,7 @@ class Piece:
 
         # Checks Horizontal, Vertical, Diagonal to see if your teams King is in sight
         found_row_iter = found_col_iter = None
-        for col_iter, row_iter in VERTICALS + HORIZONTALS + DIAGONALS:
+        for row_iter, col_iter in VERTICALS + HORIZONTALS + DIAGONALS:
             row = self.pos[ROW] + row_iter
             col = self.pos[COL] + col_iter
             while in_bounds((row, col)):
@@ -214,7 +214,6 @@ class Piece:
                 if in_line(opposing_piece.get_pos(), board.king[self.get_colour()].get_pos(),
                            move):
                     filtered_moves.append(move)
-
         return filtered_moves
 
 
@@ -224,29 +223,29 @@ class Pawn(Piece):
         self.__direction = DOWN if colour == WHITE else UP
         self.__has_moved = False
 
-    def available_moves(self, board):
+    def available_moves(self, board, include_protections= False):
         moves = []
         next_row = self.pos[ROW] + self.__direction
         col = self.pos[COL]
         if next_row in range(8):
 
             # Moving pawn forward if nothing in front of it
-            if board.get_piece(next_row, col) is None:
+            if board.get_piece(next_row, col) is None or (board.get_piece(next_row, col).get_colour() == self.get_colour() and include_protections):
                 moves.append((next_row, col))
 
             # Moving pawn 2 places forward if nothing in front of it and has not yet moved
-            if board.get_piece(next_row + self.__direction, col) is None and not self.__has_moved:
+            if ((board.get_piece(next_row + self.__direction, col) is None) or (board.get_piece(next_row + self.__direction, col).get_colour() == self.get_colour() and include_protections)) and not self.__has_moved:
                 moves.append((next_row + self.__direction, col))
                 self.has_moved = True
 
             # Moving pawn diagonally forward left if there is an enemy piece there
             if (col + LEFT in range(8) and board.get_piece(next_row, col - 1) is not None
-                    and board.get_piece(next_row, col - 1).get_colour() != self.colour):
+                    and (board.get_piece(next_row, col - 1).get_colour() != self.colour or include_protections)):
                 moves.append((next_row, col - 1))
 
             # Moving pawn diagonally forward right if there is an enemy piece there
             if (col + RIGHT in range(8) and board.get_piece(next_row, col + 1) is not None
-                    and board.get_piece(next_row, col + 1).get_colour() != self.colour):
+                    and (board.get_piece(next_row, col + 1).get_colour() != self.colour or include_protections)):
                 moves.append((next_row, col + 1))
 
         # In case that is protecting King, filters out moves that would leave King exposed
@@ -265,7 +264,7 @@ class Knight(Piece):
     def __init__(self, pos, colour):
         Piece.__init__(self, pos, KNIGHT, colour)
 
-    def available_moves(self, board):
+    def available_moves(self, board, include_protections= False):
         moves = []
 
         if self.protecting_king(board) is not (None, None):
@@ -281,7 +280,7 @@ class Knight(Piece):
             if in_bounds(trial_pos):
                 piece = board.get_piece(trial_pos[ROW], trial_pos[COL])
 
-                if piece is None or piece.get_colour() != self.colour:
+                if piece is None or piece.get_colour() != self.colour or include_protections:
                     moves.append(trial_pos)
 
         # In the case that is in check, any move has to be one that takes out of check
@@ -295,8 +294,8 @@ class Bishop(Piece):
     def __init__(self, pos, colour):
         Piece.__init__(self, pos, BISHOP, colour)
 
-    def available_moves(self, board):
-        moves = self.moves_in_line(board, DIAGONALS)
+    def available_moves(self, board, include_protections= False):
+        moves = self.moves_in_line(board, DIAGONALS, include_protections=include_protections)
 
         # In case that is protecting King, filters out moves that would leave King exposed
         protecting_king_from_piece = self.protecting_king(board)
@@ -314,8 +313,8 @@ class Rook(Piece):
     def __init__(self, pos, colour):
         Piece.__init__(self, pos, ROOK, colour)
 
-    def available_moves(self, board):
-        moves = self.moves_in_line(board, HORIZONTALS + VERTICALS)
+    def available_moves(self, board, include_protections= False):
+        moves = self.moves_in_line(board, HORIZONTALS + VERTICALS, include_protections=include_protections)
 
         # In case that is protecting King, filters out moves that would leave King exposed
         protecting_king_from_piece = self.protecting_king(board)
@@ -333,8 +332,8 @@ class Queen(Piece):
     def __init__(self, pos, colour):
         Piece.__init__(self, pos, QUEEN, colour)
 
-    def available_moves(self, board):
-        moves = self.moves_in_line(board, HORIZONTALS + VERTICALS + DIAGONALS)
+    def available_moves(self, board, include_protections= False):
+        moves = self.moves_in_line(board, HORIZONTALS + VERTICALS + DIAGONALS, include_protections=include_protections)
 
         # In case that is protecting King, filters out moves that would leave King exposed
         protecting_king_from_piece = self.protecting_king(board)
@@ -365,31 +364,19 @@ class King(Piece):
         opposing_pieces = opposing_pieces[1:]
         opposing_moves = []
         for piece in opposing_pieces:
-            opposing_moves += piece.available_moves(board)
+            opposing_moves += piece.available_moves(board, include_protections= True)
 
-        for row in [row - 1, row, row + 1]:
-            for col in [col - 1, col, col + 1]:
-                if row in range(8) and col in range(8) and not (row == col == 0):
-                    piece = board.get_piece(row, col)
-                    if (piece is None or
-                            piece.get_colour() != self.colour) and (row, col) not in opposing_moves:
-                        moves.append((row, col))
+        for row_iter, col_iter in HORIZONTALS + VERTICALS + DIAGONALS:
+            trial_row = row + row_iter
+            trial_col = col + col_iter
+            if in_bounds((trial_row, trial_col)):
+                piece = board.get_piece(trial_row, trial_col)
+                if (piece is None or piece.get_colour != self.get_colour()) and (row, col) not in opposing_moves:
+                    moves.append((row, col))
 
         # TODO Add castling feature
 
         return moves
-
-    def is_in_check(self, board):
-        opposing_pieces = board.get_pieces(BLACK) if self.colour == WHITE else board.get_pieces(
-            WHITE)
-
-        # Removing King from list of opposing pieces (King is first piece in list)
-        opposing_pieces = opposing_pieces[1:]
-        opposing_moves = []
-        for piece in opposing_pieces:
-            opposing_moves += piece.available_moves(board)
-
-        return self.curr_pos() in opposing_moves
 
 
 class Board:
@@ -468,7 +455,8 @@ class Board:
         if piece.get_colour() != player:
             raise ValueError("Cannot move an opponents piece")
 
-        if (new_row, new_col) not in piece.available_moves(self):
+        available_moves = piece.available_moves(self)
+        if (new_row, new_col) not in available_moves:
             raise ValueError("Move not valid")
 
         target_piece = self.grid[new_row][new_col]
@@ -476,15 +464,11 @@ class Board:
         if target_piece is not None and target_piece.get_colour() == player:
             raise ValueError("Cannot capture your own piece")
 
-        temp_grid = copy.deepcopy(self.grid)
 
         # Capture opposing target_piece
         if target_piece is not None:
             self.pieces[opponent].remove(target_piece)
-            if target_piece in self.check[player]['pieces_causing_check']:
-                self.check[player]['pieces_causing_check'.remove(target_piece)]
-                self.check[player]['in_check'] = len(self.check[player]['pieces_causing_check']) > 1
-
+        
         # You cannot make a move that places yourself in check
         # # If you are in check your next move has to take you out of check
         # # If you are in check mate, you lose
@@ -493,40 +477,26 @@ class Board:
         self.grid[curr_row][curr_col] = None
         self.grid[new_row][new_col] = piece
 
-        # Place Oppossing King in Check
-        new_available_moves = piece.available_moves(self)
-        if piece.get_colour() == WHITE and self.king[BLACK].get_pos() in new_available_moves:
-            self.check[BLACK]['in_check'] = True
-            self.check[BLACK]['pieces_causing_check'].append(piece)
-        elif piece.get_colour() == BLACK and self.king[WHITE].get_pos() in new_available_moves:
-            self.check[WHITE]['in_check'] = True
-            self.check[WHITE]['pieces_causing_check'].append(piece)
+        # Take your King out of check
+        if target_piece in self.check[player]['pieces_causing_check']:
+            self.check[player]['pieces_causing_check'].remove(target_piece)
+            self.check[player]['in_check'] = len(self.check[player]['pieces_causing_check']) > 1
+        elif self.check[player]['in_check']:
+            # pieces_causing_check = copy.deepcopy(self.check[player]['pieces_causing_check'])
+            for checking_piece in self.check[player]['pieces_causing_check']:
+                if in_line(self.king[player].get_pos(), checking_piece.get_pos(), piece.get_pos()):
+                    self.check[player]['pieces_causing_check'].remove(checking_piece)
+            self.check[player]['in_check'] = len(self.check[player]['pieces_causing_check']) > 1
 
-        # player_in_check_last_round = self.check[player]
-        # player_in_check_this_round = self.king[WHITE].is_in_check(self)
 
-        # # If you started the turn already in check, then you have to take youself out of check
-        # if player_in_check_last_round and player_in_check_this_round:
-        #     self.grid[curr_row][curr_col] = piece
-        #     self.grid[new_row][new_col] = temp_new
-        #     piece.set_pos(curr_row, curr_col)
-        #     raise ValueError("Player must take themself out of check")
-
-        # # Cannot do a move that results in yourself being put in check
-        # if player_in_check_this_round:
-        #     self.grid[curr_row][curr_col] = piece
-        #     self.grid[new_row][new_col] = temp_new
-        #     piece.set_pos(curr_row, curr_col)
-        #     raise ValueError("Player cannot put themselves in check")
-
-        # self.check[WHITE] = player_in_check_this_round
-        # self.check[BLACK] = self.black_king.is_in_check(self)
-
-        # # Checking if either player is in checkmate
-        # if self.check[WHITE] and len(self.white_king.available_moves()) == 0:
-        #     self.winner = BLACK
-        # if self.check[BLACK] and len(self.black_king.available_moves()) == 0:
-        #     self.winner = WHITE
+        # Place Oppossing King in Check, note a King can't place an opposing King in Check
+        if piece.get_type() != KING:
+            new_available_moves = piece.available_moves(self)
+            if self.king[opponent].get_pos() in new_available_moves:
+                self.check[opponent]['in_check'] = True
+                self.check[opponent]['pieces_causing_check'].append(piece)
+                if self.is_in_checkmate(opponent):
+                    self.winner = player
 
         self.turn += 1
 
@@ -548,6 +518,15 @@ class Board:
     def is_in_check(self, colour):
         return self.check[colour]['in_check']
 
+    def is_in_checkmate(self, colour):
+        pieces = self.pieces[colour]
+        for piece in pieces:
+            moves = piece.available_moves(self)
+            if len(moves) > 0:
+                return False
+
+        return True
+
 
 if __name__ == '__main__':
     b = Board()
@@ -559,16 +538,16 @@ if __name__ == '__main__':
         print(f"White - {b.get_pieces_str(WHITE)}, Black - {b.get_pieces_str(BLACK)}")
         print(f"Check: White - {b.is_in_check(WHITE)}, Black - {b.is_in_check(BLACK)}")
 
-        try:
-            input1 = input(f"Player {b.whose_turn()} - Enter current row/col: ").split()
-            curr_row, curr_col = int(input1[0]), int(input1[1])
-            input2 = input(f"{b.piece_at_pos(curr_row, curr_col)} - Move to row/col: ").split()
-            new_row, new_col = int(input2[0]), int(input2[1])
-            try:
-                b.move_piece(curr_row, curr_col, new_row, new_col)
-            except ValueError:
-                print("Invalid move")
-        except (ValueError, IndexError):
-            print("Please enter 2 numbers for row/col coordinates")
+        # try:
+        input1 = input(f"Player {b.whose_turn()} - Enter current row/col: ").split()
+        curr_row, curr_col = int(input1[0]), int(input1[1])
+        input2 = input(f"{b.piece_at_pos(curr_row, curr_col)} - Move to row/col: ").split()
+        new_row, new_col = int(input2[0]), int(input2[1])
+            # try:
+        b.move_piece(curr_row, curr_col, new_row, new_col)
+            # except ValueError:
+        print("Invalid move")
+        # except (ValueError, IndexError):
+        print("Please enter 2 numbers for row/col coordinates")
 
     print(f"Congrats {b.winner}, you win!!!")
