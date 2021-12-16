@@ -8,6 +8,8 @@ RIGHT = 1
 ROW = 0
 COL = 1
 
+BOARD_SIZE = 8
+
 BLACK = "Black"
 WHITE = "White"
 
@@ -31,13 +33,45 @@ def clear_console():
         command = 'cls'
     os.system(command)
 
+def cache_moves(method):
+    """
+    Decorator to handle caching of available moves. When self.available_moves is called by a piece,
+    decorator checks if has already calculated available moves for this turn. If it has, returns 
+    stored values, else calculates and stores new values.
+    """
+    def wrapper(self, board, *args, **kwargs):
+        if self.available_moves_cache['turn'] == board.turn:
+            return self.available_moves_cache['moves']
+        else:
+            moves = method(self, board, *args, **kwargs)
+            self.available_moves_cache['turn'] = board.turn
+            self.available_moves_cache['moves'] = moves
+            return moves
+    return wrapper
 
 def in_bounds(pos):
-    if pos[ROW] in range(8) and pos[COL] in range(8):
-        return True
-    return False
+    """
+    Checks if position given by (row, col) is within bounds of array of size GRID_SIZE x GRID_SIZE
+
+    Args:
+        pos (tuple): position in array (row, col)
+
+    Returns:
+        bool: returns True/False whether pos is in bounds
+    """
+    return pos[ROW] in range(BOARD_SIZE) and pos[COL] in range(BOARD_SIZE)
 
 def difference_in_pos(pos1, pos2):
+    """
+    Performs pos1 - pos2 pointwise, i.e (pos1[0] - pos2[0], pos1[1] - pos2[1])
+
+    Args:
+        pos1 (tuple): position in array (row, col)
+        pos2 (tuple): position in array (row, col)
+
+    Returns:
+        tuple: returns (pos1[ROW] - pos2[ROW], pos1[COL] - pos2[COL])
+    """
     return (pos1[ROW] - pos2[ROW], pos1[COL] - pos2[COL])
 
 
@@ -51,29 +85,25 @@ def get_direction_vector(pos1, pos2):
     return (int(row_vector / max(abs(row_vector), abs(col_vector))),
             int(col_vector / max(abs(row_vector), abs(col_vector))))
 
-
-def same_sign(a, b):
-    return (a < 0 and b < 0) or (a >= 0 and b >= 0)
-
-def get_direction_vector_float(pos1, pos2):
-    row_vector = pos2[ROW] - pos1[ROW]
-    col_vector = pos2[COL] - pos1[COL]
-
-    if row_vector == col_vector == 0:
-        return (0, 0)
-
-    return (row_vector / max(abs(row_vector), abs(col_vector)),
-            col_vector / max(abs(row_vector), abs(col_vector)))
-
-
 # Checks if pos3 is on line between pos1 and pos2
 def in_line(pos1, pos2, pos3):
+    """
+    Determines if pos3 is a point along a vertical/horizontal/diagonal line between pos1 and pos2. 
+    Note, does not check if there is anything else in between pos1 and pos2, only that pos3 is
+    inbetween. 
+
+    Args:
+        pos1 (tuple): position in array (row, col)
+        pos2 (tuple): position in array (row, col)
+        pos3 (tuple): position in array (row, col)
+
+    Returns:
+        Bool: True/False of whether pos3 is between pos1 and pos2
+    """
     if ((pos1[ROW] <= pos3[ROW] <= pos2[ROW] or pos2[ROW] <= pos3[ROW] <= pos1[ROW])
             and (pos1[COL] <= pos3[COL] <= pos2[COL] or pos2[COL] <= pos3[COL] <= pos1[COL])):
         direction_pos1_pos2 = difference_in_pos(pos1, pos2)
         direction_pos1_pos3 = difference_in_pos(pos1, pos3)
-
-        # E.g pos1 = (5, 5), pos2 = (8, 8), pos3 = (7, 7)
 
         # In horizontal/vertical line
         if direction_pos1_pos3[ROW] == direction_pos1_pos2[ROW] == 0 or direction_pos1_pos3[
@@ -89,10 +119,37 @@ def in_line(pos1, pos2, pos3):
 
 
 def list_intersection(l1, l2):
+    """
+
+    Returns a list containing the intersection of 2 lists l1 and l2, i.e list with all items that
+    are in both lists
+
+    Args:
+        l1 (list): Arbitrary list
+        l2 (list): Arbitrary list
+
+    Returns:
+        list: List containing intersection of l1 and l2
+    """
     temp = set(l2)
     return [value for value in l1 if value in temp]
 
 def in_sight(board, start_pos, direction):
+    """
+    Finds the first Piece on the board that is found by following a direction from a starting point
+    in grid. If no Piece is found, returns None. 
+
+
+    Args:
+        board (Board): Instance of Board class that contains all information of current state of game
+        start_pos (tuple): Starting position in grid
+        direction (tuple): Tuple containing of form (row_iter, col_iter), which is the direction that
+                            should be followed from starting position
+
+    Returns:
+        Piece: Returns the first Piece that is found by following direction from starting position
+                or None if there is no Piece found. 
+    """
     row_iter = direction[ROW]
     col_iter = direction[COL]
     row = start_pos[ROW] + row_iter
@@ -112,6 +169,7 @@ class Piece:
         self.pos = pos
         self.type = type
         self.colour = colour
+        self.available_moves_cache = {'turn': -1, 'moves': []}
 
     def __str__(self):
         return self.type
@@ -131,6 +189,17 @@ class Piece:
         return self.type
 
     def moves_in_line(self, board, increments, include_protections=False):
+        """[summary]
+
+        Args:
+            board (Board): Instance of Board class that contains all information of current state of game
+            increments (List): List containing tuples of form (row_iter, col_iter), which represent 
+                                the possible incremements that can be applied to a 
+            include_protections (bool, optional): [description]. Defaults to False.
+
+        Returns:
+            [type]: [description]
+        """
         moves = []
         for row_iter, col_iter in increments:
             row = self.pos[ROW] + row_iter
@@ -281,6 +350,7 @@ class Pawn(Piece):
         self.__direction = DOWN if colour == WHITE else UP
         self.__has_moved = False
 
+    @cache_moves
     def available_moves(self, board, include_protections=False):
         moves = []
         next_row = self.pos[ROW] + self.__direction
@@ -328,6 +398,7 @@ class Knight(Piece):
     def __init__(self, pos, colour):
         Piece.__init__(self, pos, KNIGHT, colour)
 
+    @cache_moves
     def available_moves(self, board, include_protections=False):
         moves = []
 
@@ -358,6 +429,7 @@ class Bishop(Piece):
     def __init__(self, pos, colour):
         Piece.__init__(self, pos, BISHOP, colour)
 
+    @cache_moves
     def available_moves(self, board, include_protections=False):
         moves = self.moves_in_line(board, DIAGONALS, include_protections=include_protections)
 
@@ -377,6 +449,7 @@ class Rook(Piece):
     def __init__(self, pos, colour):
         Piece.__init__(self, pos, ROOK, colour)
 
+    @cache_moves
     def available_moves(self, board, include_protections=False):
         moves = self.moves_in_line(board,
                                    HORIZONTALS + VERTICALS,
@@ -398,6 +471,7 @@ class Queen(Piece):
     def __init__(self, pos, colour):
         Piece.__init__(self, pos, QUEEN, colour)
 
+    @cache_moves
     def available_moves(self, board, include_protections=False):
         moves = self.moves_in_line(board,
                                    HORIZONTALS + VERTICALS + DIAGONALS,
@@ -419,6 +493,7 @@ class King(Piece):
     def __init__(self, pos, colour):
         Piece.__init__(self, pos, KING, colour)
 
+    @cache_moves
     def available_moves(self, board):
         moves = []
 
