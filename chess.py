@@ -12,6 +12,7 @@ BOARD_SIZE = 8
 
 BLACK = "Black"
 WHITE = "White"
+STALEMATE = "Stalemate"
 
 PAWN = "P"
 KNIGHT = "k"
@@ -434,6 +435,20 @@ class Pawn(Piece):
 
     @cache_moves
     def available_moves(self, board, include_protections=False):
+        """
+        Finds all available moves of a Pawn Piece given current state of the board.
+
+        Args:
+            board (Board): Instance of Board class that contains all information about the 
+                            current state of game
+            include_protections (bool, optional): Determines whether to include the positions 
+                                                    of pieces that this piece is protecting, i.e 
+                                                    positions that are reachable if allied piece was
+                                                    not there, defaults to False.
+
+        Returns:
+            List: Returns list of possible moves.
+        """
         moves = []
         next_row = self.pos[ROW] + self.__direction
         col = self.pos[COL]
@@ -694,10 +709,6 @@ class Board:
         if target_piece is not None:
             self.pieces[opponent].remove(target_piece)
 
-        # You cannot make a move that places yourself in check
-        # # If you are in check your next move has to take you out of check
-        # # If you are in check mate, you lose
-
         # Check if moving piece will cause a discovered check
         discovered_check_piece = piece.discovered_check((new_row, new_col), self)
         print(discovered_check_piece)
@@ -709,6 +720,7 @@ class Board:
         piece.set_pos((new_row, new_col))
         self.grid[curr_row][curr_col] = None
         self.grid[new_row][new_col] = piece
+        self.turn += 1
 
         # Take your King out of check
         if target_piece in self.check[player]['pieces_causing_check']:
@@ -727,11 +739,9 @@ class Board:
             if self.king[opponent].get_pos() in new_available_moves:
                 self.check[opponent]['in_check'] = True
                 self.check[opponent]['pieces_causing_check'].append(piece)
-                
-        if self.is_in_check(opponent) and self.is_in_checkmate(opponent):
-            self.winner = player
-
-        self.turn += 1
+        
+        if self.no_available_moves(opponent):
+            self.winner = player if self.is_in_check(opponent) else STALEMATE
 
     def piece_at_pos(self, row, col):
         if self.grid[row][col] is None:
@@ -751,12 +761,11 @@ class Board:
     def is_in_check(self, colour):
         return self.check[colour]['in_check']
 
-    def is_in_checkmate(self, colour):
+    def no_available_moves(self, colour):
         pieces = self.pieces[colour]
         for piece in pieces:
             moves = piece.available_moves(self)
             if len(moves) > 0:
-                print(f"{piece} - {moves}")
                 return False
 
         return True
