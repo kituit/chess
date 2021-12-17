@@ -77,27 +77,39 @@ def difference_in_pos(pos1, pos2):
 
 
 def get_direction_vector(pos1, pos2):
+    """
+    Finds the direction of the line going from pos1 to pos2, e.g (UP, RIGHT) to indicate pos2 is
+    diagonally above and to the right of pos1. If pos1 and pos2 are not on a vertical/horizontal/
+    diagonal line, returns (None, None).
 
-        direction = difference_in_pos(pos2, pos1)
-        increment = (None, None)
+    Args:
+        pos1 (Tuple): position in array (row, col)
+        pos2 (Tuple): position in array (row, col)
 
-        # Line from pos1 to pos2 is a diagonal line \
-        if direction[ROW] == direction[COL] != 0:
-            increment = (UP, LEFT) if direction[ROW] < 0 else (DOWN, RIGHT)
-        
-        # Line from pos1 to pos2 is a diagonal line /
-        if direction[ROW] == -1 * direction[COL] != 0:
-            increment = (UP, RIGHT) if direction[ROW] < 0 else (DOWN, LEFT)
-        
-        # Line from pos1 to pos2 is a horizontal line
-        if direction[ROW] == 0 and direction[COL] != 0:
-            increment = (0, LEFT) if direction[COL] < 0 else (0, RIGHT)
-        
-        # Line from pos1 to pos2 is a vertical line
-        if direction[ROW] != 0 and direction[COL] == 0:
-            increment = (UP, 0) if direction[ROW] < 0 else (DOWN, 0)
-        
-        return increment
+    Returns:
+        Tuple: Returns Tuple of form (UP/DOWN/0, LEFT/RIGHT/0) if pos1 and pos2 are on a vertical/
+                horizontal/diagonal line, otherwise returns (None, None)
+    """
+    direction = difference_in_pos(pos2, pos1)
+    increment = (None, None)
+
+    # Line from pos1 to pos2 is a diagonal line \
+    if direction[ROW] == direction[COL] != 0:
+        increment = (UP, LEFT) if direction[ROW] < 0 else (DOWN, RIGHT)
+    
+    # Line from pos1 to pos2 is a diagonal line /
+    if direction[ROW] == -1 * direction[COL] != 0:
+        increment = (UP, RIGHT) if direction[ROW] < 0 else (DOWN, LEFT)
+    
+    # Line from pos1 to pos2 is a horizontal line
+    if direction[ROW] == 0 and direction[COL] != 0:
+        increment = (0, LEFT) if direction[COL] < 0 else (0, RIGHT)
+    
+    # Line from pos1 to pos2 is a vertical line
+    if direction[ROW] != 0 and direction[COL] == 0:
+        increment = (UP, 0) if direction[ROW] < 0 else (DOWN, 0)
+    
+    return increment
 
 def in_line(pos1, pos2, pos3):
     """
@@ -475,7 +487,6 @@ class Pawn(Piece):
         # In case that is protecting King, filters out moves that would leave King exposed
         protecting_king_from_piece = self.protecting_king(board)
         if protecting_king_from_piece != (None, None):
-            print(f"Is protecting King from piece at {protecting_king_from_piece}")
             moves = self.filter_moves_to_protect_king(moves, board)
 
         # In the case that is in check, any move has to be one that takes out of check
@@ -841,12 +852,6 @@ class Board:
         if self.no_available_moves(opponent):
             self.winner = player if self.is_in_check(opponent) else STALEMATE
 
-    def piece_at_pos(self, row, col):
-        if self.grid[row][col] is None:
-            return None
-        else:
-            return self.grid[row][col].get_type()
-
     def get_piece(self, row, col):
         """
         Returns the piece in grid at position (row, col)
@@ -916,7 +921,8 @@ if __name__ == '__main__':
         # try:
         input1 = input(f"Player {b.whose_turn()} - Enter current row/col: ").split()
         curr_row, curr_col = int(input1[0]), int(input1[1])
-        input2 = input(f"{b.piece_at_pos(curr_row, curr_col)} - Move to row/col: ").split()
+        # input2 = input(f"{b.piece_at_pos(curr_row, curr_col)} - Move to row/col: ").split()
+        input2 = input(f"{b.get_piece(curr_row, curr_col)} - Move to row/col: ").split()
         new_row, new_col = int(input2[0]), int(input2[1])
         # try:
         b.move_piece(curr_row, curr_col, new_row, new_col)
