@@ -925,4 +925,7 @@ if __name__ == '__main__':
         # except (ValueError, IndexError):
         # print("Please enter 2 numbers for row/col coordinates")
 
-    print(f"Congrats {b.winner}, you win!!!")
+    if b.winner == STALEMATE:
+        print("Stalemate!!")
+    else:
+        print(f"Congrats {b.winner}, you win!!!")
