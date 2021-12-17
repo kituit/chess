@@ -54,7 +54,7 @@ def in_bounds(pos):
     Checks if position given by (row, col) is within bounds of array of size GRID_SIZE x GRID_SIZE
 
     Args:
-        pos (tuple): position in array (row, col)
+        pos (Tuple): position in array (row, col)
 
     Returns:
         bool: returns True/False whether pos is in bounds
@@ -66,26 +66,38 @@ def difference_in_pos(pos1, pos2):
     Performs pos1 - pos2 pointwise, i.e (pos1[0] - pos2[0], pos1[1] - pos2[1])
 
     Args:
-        pos1 (tuple): position in array (row, col)
-        pos2 (tuple): position in array (row, col)
+        pos1 (Tuple): position in array (row, col)
+        pos2 (Tuple): position in array (row, col)
 
     Returns:
-        tuple: returns (pos1[ROW] - pos2[ROW], pos1[COL] - pos2[COL])
+        Tuple: returns (pos1[ROW] - pos2[ROW], pos1[COL] - pos2[COL])
     """
     return (pos1[ROW] - pos2[ROW], pos1[COL] - pos2[COL])
 
 
 def get_direction_vector(pos1, pos2):
-    row_vector = pos2[ROW] - pos1[ROW]
-    col_vector = pos2[COL] - pos1[COL]
 
-    if row_vector == col_vector == 0:
-        return (0, 0)
+        direction = difference_in_pos(pos2, pos1)
+        increment = (None, None)
 
-    return (int(row_vector / max(abs(row_vector), abs(col_vector))),
-            int(col_vector / max(abs(row_vector), abs(col_vector))))
+        # Line from pos1 to pos2 is a diagonal line \
+        if direction[ROW] == direction[COL] != 0:
+            increment = (UP, LEFT) if direction[ROW] < 0 else (DOWN, RIGHT)
+        
+        # Line from pos1 to pos2 is a diagonal line /
+        if direction[ROW] == -1 * direction[COL] != 0:
+            increment = (UP, RIGHT) if direction[ROW] < 0 else (DOWN, LEFT)
+        
+        # Line from pos1 to pos2 is a horizontal line
+        if direction[ROW] == 0 and direction[COL] != 0:
+            increment = (0, LEFT) if direction[COL] < 0 else (0, RIGHT)
+        
+        # Line from pos1 to pos2 is a vertical line
+        if direction[ROW] != 0 and direction[COL] == 0:
+            increment = (UP, 0) if direction[ROW] < 0 else (DOWN, 0)
+        
+        return increment
 
-# Checks if pos3 is on line between pos1 and pos2
 def in_line(pos1, pos2, pos3):
     """
     Determines if pos3 is a point along a vertical/horizontal/diagonal line between pos1 and pos2. 
@@ -93,9 +105,9 @@ def in_line(pos1, pos2, pos3):
     inbetween. 
 
     Args:
-        pos1 (tuple): position in array (row, col)
-        pos2 (tuple): position in array (row, col)
-        pos3 (tuple): position in array (row, col)
+        pos1 (Tuple): position in array (row, col)
+        pos2 (Tuple): position in array (row, col)
+        pos3 (Tuple): position in array (row, col)
 
     Returns:
         Bool: True/False of whether pos3 is between pos1 and pos2
@@ -120,16 +132,15 @@ def in_line(pos1, pos2, pos3):
 
 def list_intersection(l1, l2):
     """
-
     Returns a list containing the intersection of 2 lists l1 and l2, i.e list with all items that
-    are in both lists
+    are in both lists. Order of l1 is retained in returned list. 
 
     Args:
-        l1 (list): Arbitrary list
-        l2 (list): Arbitrary list
+        l1 (List): Arbitrary list
+        l2 (List): Arbitrary list
 
     Returns:
-        list: List containing intersection of l1 and l2
+        List: List containing intersection of l1 and l2
     """
     temp = set(l2)
     return [value for value in l1 if value in temp]
@@ -142,8 +153,8 @@ def in_sight(board, start_pos, direction):
 
     Args:
         board (Board): Instance of Board class that contains all information of current state of game
-        start_pos (tuple): Starting position in grid
-        direction (tuple): Tuple containing of form (row_iter, col_iter), which is the direction that
+        start_pos (Tuple): Starting position in grid
+        direction (Tuple): Tuple containing of form (row_iter, col_iter), which is the direction that
                             should be followed from starting position
 
     Returns:
@@ -175,30 +186,71 @@ class Piece:
         return self.type
 
     def set_pos(self, pos):
+        """
+        Set position of Piece.
+
+        Args:
+            pos (Tuple): Position of Piece in grid (row, col)
+
+        Raises:
+            ValueError: position is not within bounds of grid, (row, col) must be between 0 and 8
+        """
         if not in_bounds(pos):
             raise ValueError("Row/Col must be between 0 and 8")
         self.pos = pos
 
     def get_pos(self):
+        """
+        Gets the current position of Piece in grid
+
+        Returns:
+            Tuple: Position (row, col) in grid
+        """
         return self.pos
 
     def get_colour(self):
+        """
+        Gets the colour of piece
+
+        Returns:
+            string literal: Returns BLACK or WHITE
+        """
         return self.colour
 
     def get_type(self):
+        """
+        Gets the the type of piece.
+        
+        Returns:
+            string literal: Returns PAWN/KNIGHT/BISHOP/ROOK/QUEEN/KING
+        """
         return self.type
 
     def moves_in_line(self, board, increments, include_protections=False):
-        """[summary]
+        
+        """
+        Checks for possible unobstructed movement along a line dictated by a piece's initial 
+        position (self.pos) and a list of possible increments. e.g increment (UP, RIGHT) would 
+        check for possible movement along diagonal upward and right line from the piece's starting
+        position. Records all moves along a line until it either reaches the edge of the game grid,
+        or encounters another piece. By default, only records the position of a piece if it is the 
+        opponents piece. Setting include_protections = True overrides this behaviour and also 
+        records positions of friendly pieces. Returns the list of all possible moves on all such 
+        lines. 
 
         Args:
-            board (Board): Instance of Board class that contains all information of current state of game
+            board (Board): Instance of Board class that contains all information about the 
+                            current state of game
             increments (List): List containing tuples of form (row_iter, col_iter), which represent 
                                 the possible incremements that can be applied to a 
-            include_protections (bool, optional): [description]. Defaults to False.
+            include_protections (bool, optional): Determines whether to include the positions 
+                                                    of pieces that this piece is protecting, i.e 
+                                                    positions that are reachable if allied piece was
+                                                    not there, defaults to False.
 
         Returns:
-            [type]: [description]
+            List: Returns list of tuples contianing positions (row, col) of all possible moves along
+                    lines. 
         """
         moves = []
         for row_iter, col_iter in increments:
@@ -218,7 +270,20 @@ class Piece:
         return moves
 
     def protecting_king(self, board):
-        # Checks if piece is currently protecting King from being in check by a Queen, Rook or Bishop
+        """
+        Checks if Piece is protecting King from being in check due to an enemy's Queen/Rook/Bishop. 
+        Determines if your team's King is within line of sight (i.e unobstructed along a
+        vertical, horizontal, diagonal line in grid), and if so checks if this piece is standing
+        between King and an opponents piece who could place King in check along this line.
+
+        Args:
+            board (Board): Instance of Board class that contains all information about the 
+                            current state of game
+
+        Returns:
+            Tuple: Returns the position of the opponent's piece that this piece is protecting the
+                    King from, defaults to (None, None) if there is no such piece. 
+        """
 
         # Checks Horizontal, Vertical, Diagonal to see if your teams King is in sight
         found_row_iter = found_col_iter = None
@@ -263,54 +328,60 @@ class Piece:
         return (None, None)
 
     def discovered_check(self, move, board):
+        """
+        Determines moving piece to position dictated by move will result in a discovered check. If 
+        no discovered check results, returns None. Otherwise, returns the piece that causes the
+        discovered check. 
+
+        Args:
+            move (Tuple): Position (row, col) that piece can move to. 
+            board (Board): Instance of Board class that contains all information about the 
+                            current state of game
+
+        Returns:
+            Piece: Returns the piece that causes discovered check, if no such piece exists returns 
+                    None.
+        """
         
         opponent = BLACK if self.get_colour() == WHITE else WHITE
         enemy_king = board.king[opponent]
 
         # If move just results in piece staying in line with King, then cannot result in discovered check
         if in_line(enemy_king.get_pos(), self.get_pos(), move) or in_line(enemy_king.get_pos(), move, self.get_pos()):
-            print("1")
             return None
         
-        direction_king_to_piece = difference_in_pos(self.get_pos(), enemy_king.get_pos())
-        increment = (None, None)
-
-        if direction_king_to_piece[ROW] == direction_king_to_piece[COL] != 0:
-            increment = (UP, LEFT) if direction_king_to_piece[ROW] < 0 else (DOWN, RIGHT)
-        
-        if direction_king_to_piece[ROW] == 0 and direction_king_to_piece[COL] != 0:
-            increment = (0, LEFT) if direction_king_to_piece[COL] < 0 else (0, RIGHT)
-        
-        if direction_king_to_piece[ROW] != 0 and direction_king_to_piece[COL] == 0:
-            increment = (UP, 0) if direction_king_to_piece[ROW] < 0 else (DOWN, 0)
-        
+        increment = get_direction_vector(enemy_king.get_pos(), self.get_pos())
         if increment == (None, None):
-            print("2")
             return None
         
+        # Checks if enemy king is in sight of piece (i.e, not just in line with King)
         if in_sight(board, self.get_pos(), (-1 * increment[ROW], -1 * increment[COL])) != enemy_king:
-            print("3")
             return None
         
-        row_iter = increment[ROW]
-        col_iter = increment[COL]
-        row = self.get_pos()[ROW] + row_iter
-        col = self.get_pos()[COL] + col_iter
-        while in_bounds((row, col)):
-            piece = board.get_piece(row, col)
-            if piece is not None:
-                if piece.get_colour() == self.get_colour():
-                    if increment in HORIZONTALS + VERTICALS and piece.get_type() in [ROOK, QUEEN]:
-                        return piece
-                    if increment in DIAGONALS and piece.get_type() in [BISHOP, QUEEN]:
-                        return piece
-                break
-            row += row_iter
-            col += col_iter
-
+        # Checks if you have a Rook, Bishp, Queen, in sight of this piece
+        piece = in_sight(board, self.get_pos(), increment)
+        if piece is not None:
+            if piece.get_colour() == self.get_colour():
+                if increment in HORIZONTALS + VERTICALS and piece.get_type() in [ROOK, QUEEN]:
+                    return piece
+                if increment in DIAGONALS and piece.get_type() in [BISHOP, QUEEN]:
+                    return piece
+        
         return None
 
     def filter_moves_to_protect_king(self, moves, board):
+        """
+        Given a set of possible moves, filter out moves that would leave your King exposed in the 
+        case that piece is protecting King.
+
+        Args:
+            moves (List): List of possible positions (row, col) that Piece can move to.
+            board (Board): Instance of Board class that contains all information about the 
+                            current state of game
+
+        Returns:
+            List: List of moves with filter applied.
+        """
         # In case that is protecting King, filters out moves that would leave King exposed
         movement_vector = get_direction_vector(board.king[self.get_colour()].get_pos(),
                                                self.get_pos())
@@ -326,6 +397,17 @@ class Piece:
 # Is assuming piece isn't a king because otherwise would be an unneccesary filter as Kings already move to get themselves out of check
 
     def filter_moves_to_stop_check(self, moves, board):
+        """
+        Given a set of moves, filters out moves that don't stop check in case that King is in check.
+
+        Args:
+            moves (List): List of possible positions (row, col) that Piece can move to.
+            board (Board): Instance of Board class that contains all information about the 
+                            current state of game
+
+        Returns:
+            List: List of moves with filter applied.
+        """
         filtered_moves = []
 
         # In double check, pieces can't stop chess by capturing or blocking, has to be from movement from King
@@ -685,7 +767,7 @@ if __name__ == '__main__':
 
     while b.winner is None:
         #clear_console()
-        print("==========")
+        # print("==========")
         print(b)
         print(f"White - {b.get_pieces_str(WHITE)}, Black - {b.get_pieces_str(BLACK)}")
         print(f"Check: White - {b.is_in_check(WHITE)}, {b.check[WHITE]['pieces_causing_check']}, Black - {b.is_in_check(BLACK)}, {b.check[BLACK]['pieces_causing_check']}")
