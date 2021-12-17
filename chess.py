@@ -391,12 +391,6 @@ class Piece:
             board, [movement_vector, negative_movement_vector])
         return list_intersection(moves, positions_in_line_with_king)
 
-
-# TODO: Fix issue with double check, where moving one of your pieces may lead to discovered check in which another one of your piece causes check
-# Fix: use similar code to protecting King, in which we have to see if one of your pieces is protecting opposing King from another one of your pieces
-
-# Is assuming piece isn't a king because otherwise would be an unneccesary filter as Kings already move to get themselves out of check
-
     def filter_moves_to_stop_check(self, moves, board):
         """
         Given a set of moves, filters out moves that don't stop check in case that King is in check.
@@ -497,6 +491,20 @@ class Knight(Piece):
 
     @cache_moves
     def available_moves(self, board, include_protections=False):
+        """
+        Finds all available moves of a Knight Piece given current state of the board.
+
+        Args:
+            board (Board): Instance of Board class that contains all information about the 
+                            current state of game
+            include_protections (bool, optional): Determines whether to include the positions 
+                                                    of pieces that this piece is protecting, i.e 
+                                                    positions that are reachable if allied piece was
+                                                    not there, defaults to False.
+
+        Returns:
+            List: Returns list of possible moves.
+        """
         moves = []
 
         if self.protecting_king(board) != (None, None):
@@ -528,6 +536,20 @@ class Bishop(Piece):
 
     @cache_moves
     def available_moves(self, board, include_protections=False):
+        """
+        Finds all available moves of a Bishop Piece given current state of the board.
+
+        Args:
+            board (Board): Instance of Board class that contains all information about the 
+                            current state of game
+            include_protections (bool, optional): Determines whether to include the positions 
+                                                    of pieces that this piece is protecting, i.e 
+                                                    positions that are reachable if allied piece was
+                                                    not there, defaults to False.
+
+        Returns:
+            List: Returns list of possible moves.
+        """
         moves = self.moves_in_line(board, DIAGONALS, include_protections=include_protections)
 
         # In case that is protecting King, filters out moves that would leave King exposed
@@ -548,6 +570,20 @@ class Rook(Piece):
 
     @cache_moves
     def available_moves(self, board, include_protections=False):
+        """
+        Finds all available moves of a Rook Piece given current state of the board.
+
+        Args:
+            board (Board): Instance of Board class that contains all information about the 
+                            current state of game
+            include_protections (bool, optional): Determines whether to include the positions 
+                                                    of pieces that this piece is protecting, i.e 
+                                                    positions that are reachable if allied piece was
+                                                    not there, defaults to False.
+
+        Returns:
+            List: Returns list of possible moves.
+        """
         moves = self.moves_in_line(board,
                                    HORIZONTALS + VERTICALS,
                                    include_protections=include_protections)
@@ -570,6 +606,20 @@ class Queen(Piece):
 
     @cache_moves
     def available_moves(self, board, include_protections=False):
+        """
+        Finds all available moves of a Queen Piece given current state of the board.
+
+        Args:
+            board (Board): Instance of Board class that contains all information about the 
+                            current state of game
+            include_protections (bool, optional): Determines whether to include the positions 
+                                                    of pieces that this piece is protecting, i.e 
+                                                    positions that are reachable if allied piece was
+                                                    not there, defaults to False.
+
+        Returns:
+            List: Returns list of possible moves.
+        """
         moves = self.moves_in_line(board,
                                    HORIZONTALS + VERTICALS + DIAGONALS,
                                    include_protections=include_protections)
@@ -592,6 +642,20 @@ class King(Piece):
 
     @cache_moves
     def available_moves(self, board):
+        """
+        Finds all available moves of a King Piece given current state of the board.
+
+        Args:
+            board (Board): Instance of Board class that contains all information about the 
+                            current state of game
+            include_protections (bool, optional): Determines whether to include the positions 
+                                                    of pieces that this piece is protecting, i.e 
+                                                    positions that are reachable if allied piece was
+                                                    not there, defaults to False.
+
+        Returns:
+            List: Returns list of possible moves.
+        """
         moves = []
 
         opposing_pieces = board.get_pieces(BLACK) if self.colour == WHITE else board.get_pieces(
@@ -635,8 +699,10 @@ class Board:
         self.grid[0] = [piece((0, index), WHITE) for index, piece in enumerate(pieces)]
         self.grid[7] = [piece((7, index), BLACK) for index, piece in enumerate(pieces)]
 
+        # Each player's King piece
         self.king = {WHITE: self.grid[0][4], BLACK: self.grid[7][4]}
 
+        # List of Each player's pieces, sorted by value
         self.pieces = {WHITE: [], BLACK: []}
         for row in self.grid[0:2]:
             for piece in row:
@@ -648,7 +714,10 @@ class Board:
                 self.pieces[BLACK].append(piece)
         self.pieces[BLACK].sort(key=lambda piece: VALUES[piece.get_type()], reverse=True)
 
+        # Current turn of Game
         self.turn = 0
+
+        # Information about whether each player is in check
         self.check = {
             WHITE: {
                 'in_check': False,
@@ -659,6 +728,8 @@ class Board:
                 'pieces_causing_check': []
             }
         }
+
+        # Winner of game, defaults to None
         self.winner = None
 
     def __str__(self):
@@ -675,6 +746,15 @@ class Board:
         return grid_str
 
     def get_pieces(self, colour):
+        """
+        Returns all remaining BLACK/WHITE pieces remaining in play
+
+        Args:
+            colour (string literal): BLACK or WHITE
+
+        Returns:
+            List: List of BLACK/WHITE pieces
+        """
         return self.pieces[colour]
 
     def get_pieces_str(self, colour):
@@ -682,6 +762,24 @@ class Board:
         return [f"{piece.get_type()} {piece.get_pos()}" for piece in pieces]
 
     def move_piece(self, curr_row, curr_col, new_row, new_col):
+        """
+        Moves piece at (curr_row, curr_col) to (new_row, new_col)
+
+        Args:
+            curr_row (int): row co-ordinate in grid
+            curr_col (int): col co-ordinate in grid
+            new_row (int): row co-ordinate in grid
+            new_col (int): col co-ordinate in grid
+
+        Raises:
+            ValueError: Either (curr_row, curr_col) or (new_row, new_col) points to position 
+                        out of grid
+            ValueError: No piece exists at position (curr_row, curr_col)
+            ValueError: Piece at (curr_row, curr_col) is the opponents
+            ValueError: Piece cannot move to (new_row, new_col)
+            ValueError: Position (new_row, new_col) is the opponent's King, which you cannot capture
+        """
+
         if not (in_bounds((curr_row, curr_col)) and in_bounds((new_row, new_col))):
             raise ValueError("Coordinates not between 0 and 7")
 
@@ -702,8 +800,8 @@ class Board:
 
         target_piece = self.grid[new_row][new_col]
 
-        if target_piece is not None and target_piece.get_colour() == player:
-            raise ValueError("Cannot capture your own piece")
+        if target_piece == self.king[opponent]:
+            raise ValueError("Cannot capture opponent's King")
 
         # Capture opposing target_piece
         if target_piece is not None:
@@ -711,23 +809,21 @@ class Board:
 
         # Check if moving piece will cause a discovered check
         discovered_check_piece = piece.discovered_check((new_row, new_col), self)
-        print(discovered_check_piece)
         if discovered_check_piece is not None:
-            print(f"Discovered check piece = {discovered_check_piece} at {discovered_check_piece.get_pos()}")
             self.check[opponent]['pieces_causing_check'].append(discovered_check_piece)
             self.check[opponent]['in_check'] = True
 
+        # Move piece, update turn count
         piece.set_pos((new_row, new_col))
         self.grid[curr_row][curr_col] = None
         self.grid[new_row][new_col] = piece
         self.turn += 1
 
-        # Take your King out of check
+        # Take your King out of check by either capturing piece or blocking 
         if target_piece in self.check[player]['pieces_causing_check']:
             self.check[player]['pieces_causing_check'].remove(target_piece)
             self.check[player]['in_check'] = len(self.check[player]['pieces_causing_check']) > 1
         elif self.check[player]['in_check']:
-            # pieces_causing_check = copy.deepcopy(self.check[player]['pieces_causing_check'])
             for checking_piece in self.check[player]['pieces_causing_check']:
                 if in_line(self.king[player].get_pos(), checking_piece.get_pos(), piece.get_pos()):
                     self.check[player]['pieces_causing_check'].remove(checking_piece)
@@ -740,6 +836,8 @@ class Board:
                 self.check[opponent]['in_check'] = True
                 self.check[opponent]['pieces_causing_check'].append(piece)
         
+        # If opponent now has no possible moves they are either in checkmate (if they are in check)
+        # or the game has ended in stalemate
         if self.no_available_moves(opponent):
             self.winner = player if self.is_in_check(opponent) else STALEMATE
 
@@ -750,18 +848,52 @@ class Board:
             return self.grid[row][col].get_type()
 
     def get_piece(self, row, col):
+        """
+        Returns the piece in grid at position (row, col)
+
+        Args:
+            row (int): Row co-ordinate in grid
+            col (int): Col co-ordinate in grid
+
+        Returns:
+            Piece: Returns Piece at grid[row][col]
+        """
         return self.grid[row][col]
 
     def whose_turn(self):
+        """
+        Determines whose turn it is (BLACK/WHITE)
+
+        Returns:
+            string literal: Returns BLACK/WHITE
+        """
         if self.turn % 2 == 0:
             return WHITE
         else:
             return BLACK
 
     def is_in_check(self, colour):
+        """
+        Determines if player is in check or not.
+
+        Args:
+            colour (string literal): Player BLACK/WHITE
+
+        Returns:
+            Bool: True if player is in check, else returns False. 
+        """
         return self.check[colour]['in_check']
 
     def no_available_moves(self, colour):
+        """
+        Determines if player has no available moves
+
+        Args:
+            colour (string literal): Player BLACK/WHITE
+
+        Returns:
+            Bool: Returns True if player has no possible moves, else returns False.
+        """
         pieces = self.pieces[colour]
         for piece in pieces:
             moves = piece.available_moves(self)
