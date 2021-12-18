@@ -15,7 +15,7 @@ WHITE = "White"
 STALEMATE = "Stalemate"
 
 PAWN = "P"
-KNIGHT = "k"
+KNIGHT = "N"
 BISHOP = "B"
 ROOK = "R"
 QUEEN = "Q"
@@ -34,6 +34,50 @@ def clear_console():
         command = 'cls'
     os.system(command)
 
+
+def get_moves(input_str):
+    """
+    Takes in input from player and returns corresponding grid co-ordinates.
+
+    Args:
+        input_str (string): Input string for text based game.
+
+    Raises:
+        ValueError: Player did not enter two co-ordinates.
+        ValueError: Co-ordinate must consist of 2 characters.
+        ValueError: Co-ordinate must be of form <letter><number>.
+        ValueError: Co-ordinates are outside of grid.
+
+    Returns:
+        Tuple, Tuple: Returns two Tuples of form (row, col).
+    """
+
+    inputs = input_str.split()
+
+    if len(inputs) != 2:
+        raise ValueError("Must enter two co-ordinates in grid")
+
+    move1 = inputs[0]
+    move2 = inputs[1]
+
+    if len(move1) != 2 or len(move2) != 2:
+        raise ValueError("Co-ordinate must be two characters")
+
+    if not (move1[0].isalpha() and move1[1].isnumeric()) or not (move2[0].isalpha()
+                                                                 and move2[1].isnumeric()):
+        raise ValueError("Co-ordinate must be of form <letter><number>")
+
+    def move_to_pos(move):
+        row = int(move[1]) - 1
+        col = ord(move[0].lower()) - 97
+        pos = (row, col)
+        if not in_bounds(pos):
+            raise ValueError("Co-ordinates are outside of grid")
+        return (row, col)
+
+    return move_to_pos(move1), move_to_pos(move2)
+
+
 def cache_moves(method):
     """
     Decorator to handle caching of available moves. When self.available_moves is called by a piece,
@@ -48,30 +92,33 @@ def cache_moves(method):
             self.available_moves_cache['turn'] = board.turn
             self.available_moves_cache['moves'] = moves
             return moves
+
     return wrapper
+
 
 def in_bounds(pos):
     """
-    Checks if position given by (row, col) is within bounds of array of size GRID_SIZE x GRID_SIZE
+    Checks if position given by (row, col) is within bounds of array of size GRID_SIZE x GRID_SIZE.
 
     Args:
-        pos (Tuple): position in array (row, col)
+        pos (Tuple): position in array (row, col).
 
     Returns:
-        bool: returns True/False whether pos is in bounds
+        bool: returns True/False whether pos is in bounds.
     """
     return pos[ROW] in range(BOARD_SIZE) and pos[COL] in range(BOARD_SIZE)
 
+
 def difference_in_pos(pos1, pos2):
     """
-    Performs pos1 - pos2 pointwise, i.e (pos1[0] - pos2[0], pos1[1] - pos2[1])
+    Performs pos1 - pos2 pointwise, i.e (pos1[0] - pos2[0], pos1[1] - pos2[1]).
 
     Args:
-        pos1 (Tuple): position in array (row, col)
-        pos2 (Tuple): position in array (row, col)
+        pos1 (Tuple): position in array (row, col).
+        pos2 (Tuple): position in array (row, col).
 
     Returns:
-        Tuple: returns (pos1[ROW] - pos2[ROW], pos1[COL] - pos2[COL])
+        Tuple: returns (pos1[ROW] - pos2[ROW], pos1[COL] - pos2[COL]).
     """
     return (pos1[ROW] - pos2[ROW], pos1[COL] - pos2[COL])
 
@@ -83,12 +130,12 @@ def get_direction_vector(pos1, pos2):
     diagonal line, returns (None, None).
 
     Args:
-        pos1 (Tuple): position in array (row, col)
-        pos2 (Tuple): position in array (row, col)
+        pos1 (Tuple): position in array (row, col).
+        pos2 (Tuple): position in array (row, col).
 
     Returns:
         Tuple: Returns Tuple of form (UP/DOWN/0, LEFT/RIGHT/0) if pos1 and pos2 are on a vertical/
-                horizontal/diagonal line, otherwise returns (None, None)
+                horizontal/diagonal line, otherwise returns (None, None).
     """
     direction = difference_in_pos(pos2, pos1)
     increment = (None, None)
@@ -96,20 +143,21 @@ def get_direction_vector(pos1, pos2):
     # Line from pos1 to pos2 is a diagonal line \
     if direction[ROW] == direction[COL] != 0:
         increment = (UP, LEFT) if direction[ROW] < 0 else (DOWN, RIGHT)
-    
+
     # Line from pos1 to pos2 is a diagonal line /
     if direction[ROW] == -1 * direction[COL] != 0:
         increment = (UP, RIGHT) if direction[ROW] < 0 else (DOWN, LEFT)
-    
+
     # Line from pos1 to pos2 is a horizontal line
     if direction[ROW] == 0 and direction[COL] != 0:
         increment = (0, LEFT) if direction[COL] < 0 else (0, RIGHT)
-    
+
     # Line from pos1 to pos2 is a vertical line
     if direction[ROW] != 0 and direction[COL] == 0:
         increment = (UP, 0) if direction[ROW] < 0 else (DOWN, 0)
-    
+
     return increment
+
 
 def in_line(pos1, pos2, pos3):
     """
@@ -118,12 +166,12 @@ def in_line(pos1, pos2, pos3):
     inbetween. 
 
     Args:
-        pos1 (Tuple): position in array (row, col)
-        pos2 (Tuple): position in array (row, col)
-        pos3 (Tuple): position in array (row, col)
+        pos1 (Tuple): position in array (row, col).
+        pos2 (Tuple): position in array (row, col).
+        pos3 (Tuple): position in array (row, col).
 
     Returns:
-        Bool: True/False of whether pos3 is between pos1 and pos2
+        Bool: True/False of whether pos3 is between pos1 and pos2.
     """
     if ((pos1[ROW] <= pos3[ROW] <= pos2[ROW] or pos2[ROW] <= pos3[ROW] <= pos1[ROW])
             and (pos1[COL] <= pos3[COL] <= pos2[COL] or pos2[COL] <= pos3[COL] <= pos1[COL])):
@@ -149,14 +197,15 @@ def list_intersection(l1, l2):
     are in both lists. Order of l1 is retained in returned list. 
 
     Args:
-        l1 (List): Arbitrary list
-        l2 (List): Arbitrary list
+        l1 (List): Arbitrary list.
+        l2 (List): Arbitrary list.
 
     Returns:
-        List: List containing intersection of l1 and l2
+        List: List containing intersection of l1 and l2.
     """
     temp = set(l2)
     return [value for value in l1 if value in temp]
+
 
 def in_sight(board, start_pos, direction):
     """
@@ -166,9 +215,9 @@ def in_sight(board, start_pos, direction):
 
     Args:
         board (Board): Instance of Board class that contains all information of current state of game
-        start_pos (Tuple): Starting position in grid
+        start_pos (Tuple): Starting position in grid.
         direction (Tuple): Tuple containing of form (row_iter, col_iter), which is the direction that
-                            should be followed from starting position
+                            should be followed from starting position.
 
     Returns:
         Piece: Returns the first Piece that is found by following direction from starting position
@@ -178,13 +227,13 @@ def in_sight(board, start_pos, direction):
     col_iter = direction[COL]
     row = start_pos[ROW] + row_iter
     col = start_pos[COL] + col_iter
-    
+
     piece = None
     while in_bounds((row, col)) and piece is None:
         piece = board.get_piece(row, col)
         row += row_iter
         col += col_iter
-    
+
     return piece
 
 
@@ -203,10 +252,10 @@ class Piece:
         Set position of Piece.
 
         Args:
-            pos (Tuple): Position of Piece in grid (row, col)
+            pos (Tuple): Position of Piece in grid (row, col).
 
         Raises:
-            ValueError: position is not within bounds of grid, (row, col) must be between 0 and 8
+            ValueError: position is not within bounds of grid, (row, col) must be between 0 and 8.
         """
         if not in_bounds(pos):
             raise ValueError("Row/Col must be between 0 and 8")
@@ -214,19 +263,19 @@ class Piece:
 
     def get_pos(self):
         """
-        Gets the current position of Piece in grid
+        Gets the current position of Piece in grid.
 
         Returns:
-            Tuple: Position (row, col) in grid
+            Tuple: Position (row, col) in grid.
         """
         return self.pos
 
     def get_colour(self):
         """
-        Gets the colour of piece
+        Gets the colour of piece.
 
         Returns:
-            string literal: Returns BLACK or WHITE
+            string literal: Returns BLACK or WHITE.
         """
         return self.colour
 
@@ -235,12 +284,11 @@ class Piece:
         Gets the the type of piece.
         
         Returns:
-            string literal: Returns PAWN/KNIGHT/BISHOP/ROOK/QUEEN/KING
+            string literal: Returns PAWN/KNIGHT/BISHOP/ROOK/QUEEN/KING.
         """
         return self.type
 
     def moves_in_line(self, board, increments, include_protections=False):
-        
         """
         Checks for possible unobstructed movement along a line dictated by a piece's initial 
         position (self.pos) and a list of possible increments. e.g increment (UP, RIGHT) would 
@@ -253,9 +301,9 @@ class Piece:
 
         Args:
             board (Board): Instance of Board class that contains all information about the 
-                            current state of game
+                            current state of game.
             increments (List): List containing tuples of form (row_iter, col_iter), which represent 
-                                the possible incremements that can be applied to a 
+                                the possible incremements that can be applied to starting position.
             include_protections (bool, optional): Determines whether to include the positions 
                                                     of pieces that this piece is protecting, i.e 
                                                     positions that are reachable if allied piece was
@@ -291,7 +339,7 @@ class Piece:
 
         Args:
             board (Board): Instance of Board class that contains all information about the 
-                            current state of game
+                            current state of game.
 
         Returns:
             Tuple: Returns the position of the opponent's piece that this piece is protecting the
@@ -349,28 +397,30 @@ class Piece:
         Args:
             move (Tuple): Position (row, col) that piece can move to. 
             board (Board): Instance of Board class that contains all information about the 
-                            current state of game
+                            current state of game.
 
         Returns:
             Piece: Returns the piece that causes discovered check, if no such piece exists returns 
                     None.
         """
-        
+
         opponent = BLACK if self.get_colour() == WHITE else WHITE
         enemy_king = board.king[opponent]
 
         # If move just results in piece staying in line with King, then cannot result in discovered check
-        if in_line(enemy_king.get_pos(), self.get_pos(), move) or in_line(enemy_king.get_pos(), move, self.get_pos()):
+        if in_line(enemy_king.get_pos(), self.get_pos(), move) or in_line(
+                enemy_king.get_pos(), move, self.get_pos()):
             return None
-        
+
         increment = get_direction_vector(enemy_king.get_pos(), self.get_pos())
         if increment == (None, None):
             return None
-        
+
         # Checks if enemy king is in sight of piece (i.e, not just in line with King)
-        if in_sight(board, self.get_pos(), (-1 * increment[ROW], -1 * increment[COL])) != enemy_king:
+        if in_sight(board, self.get_pos(),
+                    (-1 * increment[ROW], -1 * increment[COL])) != enemy_king:
             return None
-        
+
         # Checks if you have a Rook, Bishp, Queen, in sight of this piece
         piece = in_sight(board, self.get_pos(), increment)
         if piece is not None:
@@ -379,7 +429,7 @@ class Piece:
                     return piece
                 if increment in DIAGONALS and piece.get_type() in [BISHOP, QUEEN]:
                     return piece
-        
+
         return None
 
     def filter_moves_to_protect_king(self, moves, board):
@@ -390,7 +440,7 @@ class Piece:
         Args:
             moves (List): List of possible positions (row, col) that Piece can move to.
             board (Board): Instance of Board class that contains all information about the 
-                            current state of game
+                            current state of game.
 
         Returns:
             List: List of moves with filter applied.
@@ -410,7 +460,7 @@ class Piece:
         Args:
             moves (List): List of possible positions (row, col) that Piece can move to.
             board (Board): Instance of Board class that contains all information about the 
-                            current state of game
+                            current state of game.
 
         Returns:
             List: List of moves with filter applied.
@@ -446,7 +496,7 @@ class Pawn(Piece):
 
         Args:
             board (Board): Instance of Board class that contains all information about the 
-                            current state of game
+                            current state of game.
             include_protections (bool, optional): Determines whether to include the positions 
                                                     of pieces that this piece is protecting, i.e 
                                                     positions that are reachable if allied piece was
@@ -507,7 +557,7 @@ class Knight(Piece):
 
         Args:
             board (Board): Instance of Board class that contains all information about the 
-                            current state of game
+                            current state of game.
             include_protections (bool, optional): Determines whether to include the positions 
                                                     of pieces that this piece is protecting, i.e 
                                                     positions that are reachable if allied piece was
@@ -552,7 +602,7 @@ class Bishop(Piece):
 
         Args:
             board (Board): Instance of Board class that contains all information about the 
-                            current state of game
+                            current state of game.
             include_protections (bool, optional): Determines whether to include the positions 
                                                     of pieces that this piece is protecting, i.e 
                                                     positions that are reachable if allied piece was
@@ -586,7 +636,7 @@ class Rook(Piece):
 
         Args:
             board (Board): Instance of Board class that contains all information about the 
-                            current state of game
+                            current state of game.
             include_protections (bool, optional): Determines whether to include the positions 
                                                     of pieces that this piece is protecting, i.e 
                                                     positions that are reachable if allied piece was
@@ -622,7 +672,7 @@ class Queen(Piece):
 
         Args:
             board (Board): Instance of Board class that contains all information about the 
-                            current state of game
+                            current state of game.
             include_protections (bool, optional): Determines whether to include the positions 
                                                     of pieces that this piece is protecting, i.e 
                                                     positions that are reachable if allied piece was
@@ -658,7 +708,7 @@ class King(Piece):
 
         Args:
             board (Board): Instance of Board class that contains all information about the 
-                            current state of game
+                            current state of game.
             include_protections (bool, optional): Determines whether to include the positions 
                                                     of pieces that this piece is protecting, i.e 
                                                     positions that are reachable if allied piece was
@@ -744,8 +794,9 @@ class Board:
         self.winner = None
 
     def __str__(self):
-        grid_str = ""
+        grid_str = "  abcdefgh\n  --------\n"
         for index, row in enumerate(self.grid):
+            grid_str += f"{index + 1}|"
             for element in row:
                 if element is None:
                     grid_str += "."
@@ -758,13 +809,13 @@ class Board:
 
     def get_pieces(self, colour):
         """
-        Returns all remaining BLACK/WHITE pieces remaining in play
+        Returns all remaining BLACK/WHITE pieces remaining in play.
 
         Args:
-            colour (string literal): BLACK or WHITE
+            colour (string literal): BLACK or WHITE.
 
         Returns:
-            List: List of BLACK/WHITE pieces
+            List: List of BLACK/WHITE pieces.
         """
         return self.pieces[colour]
 
@@ -774,21 +825,22 @@ class Board:
 
     def move_piece(self, curr_row, curr_col, new_row, new_col):
         """
-        Moves piece at (curr_row, curr_col) to (new_row, new_col)
+        Moves piece at (curr_row, curr_col) to (new_row, new_col).
 
         Args:
-            curr_row (int): row co-ordinate in grid
-            curr_col (int): col co-ordinate in grid
-            new_row (int): row co-ordinate in grid
-            new_col (int): col co-ordinate in grid
+            curr_row (int): row co-ordinate in grid.
+            curr_col (int): col co-ordinate in grid.
+            new_row (int): row co-ordinate in grid.
+            new_col (int): col co-ordinate in grid.
 
         Raises:
             ValueError: Either (curr_row, curr_col) or (new_row, new_col) points to position 
-                        out of grid
-            ValueError: No piece exists at position (curr_row, curr_col)
-            ValueError: Piece at (curr_row, curr_col) is the opponents
-            ValueError: Piece cannot move to (new_row, new_col)
-            ValueError: Position (new_row, new_col) is the opponent's King, which you cannot capture
+                        out of grid.
+            ValueError: No piece exists at position (curr_row, curr_col).
+            ValueError: Piece at (curr_row, curr_col) is the opponents.
+            ValueError: Piece cannot move to (new_row, new_col).
+            ValueError: Position (new_row, new_col) is the opponent's King, which you 
+                        cannot capture.
         """
 
         if not (in_bounds((curr_row, curr_col)) and in_bounds((new_row, new_col))):
@@ -830,7 +882,7 @@ class Board:
         self.grid[new_row][new_col] = piece
         self.turn += 1
 
-        # Take your King out of check by either capturing piece or blocking 
+        # Take your King out of check by either capturing piece or blocking
         if target_piece in self.check[player]['pieces_causing_check']:
             self.check[player]['pieces_causing_check'].remove(target_piece)
             self.check[player]['in_check'] = len(self.check[player]['pieces_causing_check']) > 1
@@ -846,7 +898,7 @@ class Board:
             if self.king[opponent].get_pos() in new_available_moves:
                 self.check[opponent]['in_check'] = True
                 self.check[opponent]['pieces_causing_check'].append(piece)
-        
+
         # If opponent now has no possible moves they are either in checkmate (if they are in check)
         # or the game has ended in stalemate
         if self.no_available_moves(opponent):
@@ -854,23 +906,23 @@ class Board:
 
     def get_piece(self, row, col):
         """
-        Returns the piece in grid at position (row, col)
+        Returns the piece in grid at position (row, col).
 
         Args:
-            row (int): Row co-ordinate in grid
-            col (int): Col co-ordinate in grid
+            row (int): Row co-ordinate in grid.
+            col (int): Col co-ordinate in grid.
 
         Returns:
-            Piece: Returns Piece at grid[row][col]
+            Piece: Returns Piece at grid[row][col].
         """
         return self.grid[row][col]
 
     def whose_turn(self):
         """
-        Determines whose turn it is (BLACK/WHITE)
+        Determines whose turn it is (BLACK/WHITE).
 
         Returns:
-            string literal: Returns BLACK/WHITE
+            string literal: Returns BLACK/WHITE.
         """
         if self.turn % 2 == 0:
             return WHITE
@@ -882,7 +934,7 @@ class Board:
         Determines if player is in check or not.
 
         Args:
-            colour (string literal): Player BLACK/WHITE
+            colour (string literal): Player BLACK/WHITE.
 
         Returns:
             Bool: True if player is in check, else returns False. 
@@ -891,10 +943,10 @@ class Board:
 
     def no_available_moves(self, colour):
         """
-        Determines if player has no available moves
+        Determines if player has no available moves.
 
         Args:
-            colour (string literal): Player BLACK/WHITE
+            colour (string literal): Player BLACK/WHITE.
 
         Returns:
             Bool: Returns True if player has no possible moves, else returns False.
@@ -912,24 +964,18 @@ if __name__ == '__main__':
     b = Board()
 
     while b.winner is None:
-        #clear_console()
-        # print("==========")
+        clear_console()
         print(b)
-        print(f"White - {b.get_pieces_str(WHITE)}, Black - {b.get_pieces_str(BLACK)}")
-        print(f"Check: White - {b.is_in_check(WHITE)}, {b.check[WHITE]['pieces_causing_check']}, Black - {b.is_in_check(BLACK)}, {b.check[BLACK]['pieces_causing_check']}")
-
-        # try:
-        input1 = input(f"Player {b.whose_turn()} - Enter current row/col: ").split()
-        curr_row, curr_col = int(input1[0]), int(input1[1])
-        # input2 = input(f"{b.piece_at_pos(curr_row, curr_col)} - Move to row/col: ").split()
-        input2 = input(f"{b.get_piece(curr_row, curr_col)} - Move to row/col: ").split()
-        new_row, new_col = int(input2[0]), int(input2[1])
-        # try:
-        b.move_piece(curr_row, curr_col, new_row, new_col)
-        # except ValueError:
-        # print("Invalid move")
-        # except (ValueError, IndexError):
-        # print("Please enter 2 numbers for row/col coordinates")
+        player = b.whose_turn()
+        while True:
+            try:
+                input_str = input(
+                    f"Player {player}{' - Check' if b.is_in_check(player) else ''} - Enter Move: ")
+                curr_pos, new_pos = get_moves(input_str)
+                b.move_piece(curr_pos[ROW], curr_pos[COL], new_pos[ROW], new_pos[COL])
+                break
+            except ValueError:
+                print("Invalid Move")
 
     if b.winner == STALEMATE:
         print("Stalemate!!")
