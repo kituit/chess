@@ -687,8 +687,8 @@ class King(Piece):
             if in_bounds((trial_row, trial_col)):
                 piece = board.get_piece(trial_row, trial_col)
                 if (piece is None or
-                        piece.get_colour != self.get_colour()) and (row, col) not in opposing_moves:
-                    moves.append((row, col))
+                        piece.get_colour() != self.get_colour()) and (row, col) not in opposing_moves:
+                    moves.append((trial_row, trial_col))
 
         # TODO Add castling feature
 
