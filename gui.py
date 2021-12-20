@@ -9,8 +9,9 @@ MOVE_COLOUR = (0, 0, 150)
 CHECK_COLOUR = (150, 0, 0)
 
 BOARD_SIZE = 1000 # Must be divisible by 8 to display correctly, as needs to be evenly divided into 8 x 8 grid
-DISPLAY_DIMENSIONS = (BOARD_SIZE, BOARD_SIZE + 100)
 SQUARE_SIZE = BOARD_SIZE // 8
+DISPLAY_DIMENSIONS = (BOARD_SIZE, BOARD_SIZE + SQUARE_SIZE)
+FONT_SIZE = SQUARE_SIZE // 2
 
 SPRITES_FILE = "img/sprites.png"
 
@@ -70,8 +71,7 @@ class Gui():
         self.win = pygame.display.set_mode(DISPLAY_DIMENSIONS)
         pygame.display.set_caption("Chess")
         self.sprites = SpriteSheet()
-        self.font = pygame.freetype.SysFont('Sans', 50)
-        # TODO Make it get default system font
+        self.font = pygame.freetype.SysFont('Sans', FONT_SIZE)
 
     def updateDisplay(self, board, moves):
         # Clear display
