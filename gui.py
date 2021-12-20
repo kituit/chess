@@ -1,11 +1,14 @@
 import pygame
+import pygame.freetype
 import time
-from chess import KING, QUEEN, BISHOP, ROOK, KNIGHT, PAWN, BLACK, WHITE, Board, ROW, COL
+from chess import KING, QUEEN, BISHOP, ROOK, KNIGHT, PAWN, BLACK, STALEMATE, WHITE, Board, ROW, COL
 
+BLACK_TEXT = (0, 0, 0)
 BLACK_COLOUR = (189,183,107)
 WHITE_COLOUR = (255, 255, 224)
 MOVE_COLOUR = (0, 0, 150)
 BOARD_SIZE = 1000 # Must be divisible by 8 to display correctly, as needs to be evenly divided into 8 x 8 grid
+DISPLAY_DIMENSIONS = (BOARD_SIZE, BOARD_SIZE + 100)
 SQUARE_SIZE = BOARD_SIZE // 8
 SPRITES_FILE = "img/sprites.png"
 
@@ -54,8 +57,11 @@ class SpriteSheet(object):
 
 
 pygame.init()
+# pygame.font.init() # you have to call this at the start, 
+#                    # if you want to use this module.
+ft_font = pygame.freetype.SysFont('Sans', 50)
 
-win = pygame.display.set_mode((BOARD_SIZE, BOARD_SIZE))
+win = pygame.display.set_mode(DISPLAY_DIMENSIONS)
 
 pygame.display.set_caption("Chess")
 
@@ -65,17 +71,22 @@ b = Board()
 run = True
 
 def displayBoard(win, b, moves):
-    win.fill((0,0,0))
-    for x in range(8):
-        for y in range(8):
-            if (y, x) in moves:
+    
+    # Clear display
+    win.fill((255, 255, 255))
+    
+    # Create Checkered Grid
+    for col in range(8):
+        for row in range(8):
+            if (row, col) in moves:
                 colour = MOVE_COLOUR
-            elif (x + y) % 2 == 0:
+            elif (col + row) % 2 == 0:
                 colour = BLACK_COLOUR
             else:
                 colour = WHITE_COLOUR
-            pygame.draw.rect(win, colour, (x * SQUARE_SIZE, y * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+            pygame.draw.rect(win, colour, (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
     
+    # Diplay Pieces
     for piece in b.get_pieces(WHITE) + b.get_pieces(BLACK):
         colour = piece.get_colour()
         piece_type = piece.get_type()
@@ -83,32 +94,41 @@ def displayBoard(win, b, moves):
         row, col = pos[ROW], pos[COL]
         win.blit(sprites.get_image(*SPRITES_CORDS[colour][piece_type]['location'], *SPRITES_CORDS[colour][piece_type]['dimensions']), (col * SQUARE_SIZE, row * SQUARE_SIZE))
 
+    if b.winner is None:
+        text_str = f"Player {b.whose_turn()}"
+    elif b.winner == STALEMATE:
+        text_str = "Stalemate!!!"
+    else:
+        text_str = f"Player {b.winner} has won!"
+    text_rect = ft_font.get_rect(text_str)
+    text_rect.center = (win.get_rect().midbottom[0], win.get_rect().midbottom[1] - text_rect.height)
+    ft_font.render_to(win, text_rect.topleft, text_str, BLACK_TEXT)
+
 
 selected_piece = None
 moves = []
-while run and b.winner == None:
+while run and b.winner is None:
     pygame.time.delay(5)
-    
-    displayBoard(win, b, moves)
 
-    # get all events
+    # Get all events
     ev = pygame.event.get()
-
-    # proceed events
     for event in ev:
 
+        # Quit Game
         if event.type == pygame.QUIT:
             run = False
 
-        # handle MOUSEBUTTONUP
+        # Click on piece 
         if event.type == pygame.MOUSEBUTTONDOWN:
             pos = pygame.mouse.get_pos()
             square_coords = (pos[1] // SQUARE_SIZE, pos[0] // SQUARE_SIZE)
 
+            # If has already selected piece, choosing where to move piece
             if selected_piece is not None and square_coords in moves:
                 b.move_piece(*selected_piece.get_pos(), *square_coords)
                 selected_piece = None
                 moves = []
+            # Has not already selected piece, choosing piece to move
             else:
                 selected_piece = b.get_piece(square_coords[ROW], square_coords[COL])
                 if selected_piece is not None and selected_piece.get_colour() == b.whose_turn():
@@ -116,7 +136,19 @@ while run and b.winner == None:
                     print(moves)
                 else:
                     moves = []
-      
+    
+    # Display Game Board
+    displayBoard(win, b, moves)
     pygame.display.update()
 
+while run:
+    pygame.time.delay(5)
+
+    # Get all events
+    ev = pygame.event.get()
+    for event in ev:
+
+        # Quit Game
+        if event.type == pygame.QUIT:
+            run = False
 
