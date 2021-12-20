@@ -1,16 +1,20 @@
 import pygame
 import pygame.freetype
-import time
 from chess import KING, QUEEN, BISHOP, ROOK, KNIGHT, PAWN, BLACK, STALEMATE, WHITE, Board, ROW, COL
 
 BLACK_TEXT = (0, 0, 0)
 BLACK_COLOUR = (189,183,107)
 WHITE_COLOUR = (255, 255, 224)
 MOVE_COLOUR = (0, 0, 150)
+CHECK_COLOUR = (150, 0, 0)
+
 BOARD_SIZE = 1000 # Must be divisible by 8 to display correctly, as needs to be evenly divided into 8 x 8 grid
 DISPLAY_DIMENSIONS = (BOARD_SIZE, BOARD_SIZE + 100)
 SQUARE_SIZE = BOARD_SIZE // 8
+
 SPRITES_FILE = "img/sprites.png"
+
+FPS = 10
 
 SPRITES_CORDS = {
     WHITE : {
@@ -54,21 +58,8 @@ class SpriteSheet(object):
         # Return the image
         return image
 
-
-
-pygame.init()
-# pygame.font.init() # you have to call this at the start, 
-#                    # if you want to use this module.
-ft_font = pygame.freetype.SysFont('Sans', 50)
-
-win = pygame.display.set_mode(DISPLAY_DIMENSIONS)
-
-pygame.display.set_caption("Chess")
-
-sprites = SpriteSheet()
-b = Board()
-
-run = True
+def get_checking_pieces_pos(board):
+    return [piece.get_pos() for piece in b.check[b.whose_turn()]['pieces_causing_check']]
 
 def displayBoard(win, b, moves):
     
@@ -80,6 +71,8 @@ def displayBoard(win, b, moves):
         for row in range(8):
             if (row, col) in moves:
                 colour = MOVE_COLOUR
+            elif (row, col) in get_checking_pieces_pos(b):
+                colour = CHECK_COLOUR
             elif (col + row) % 2 == 0:
                 colour = BLACK_COLOUR
             else:
@@ -94,6 +87,7 @@ def displayBoard(win, b, moves):
         row, col = pos[ROW], pos[COL]
         win.blit(sprites.get_image(*SPRITES_CORDS[colour][piece_type]['location'], *SPRITES_CORDS[colour][piece_type]['dimensions']), (col * SQUARE_SIZE, row * SQUARE_SIZE))
 
+    # Adding Text
     if b.winner is None:
         text_str = f"Player {b.whose_turn()}"
     elif b.winner == STALEMATE:
@@ -104,11 +98,25 @@ def displayBoard(win, b, moves):
     text_rect.center = (win.get_rect().midbottom[0], win.get_rect().midbottom[1] - text_rect.height)
     ft_font.render_to(win, text_rect.topleft, text_str, BLACK_TEXT)
 
+# initialize all imported pygame modules
+pygame.init()
+ft_font = pygame.freetype.SysFont('Sans', 50)
+
+win = pygame.display.set_mode(DISPLAY_DIMENSIONS)
+
+pygame.display.set_caption("Chess")
+
+sprites = SpriteSheet()
+b = Board()
+
+run = True
+
+clock = pygame.time.Clock()
 
 selected_piece = None
 moves = []
 while run and b.winner is None:
-    pygame.time.delay(5)
+    clock.tick(FPS)
 
     # Get all events
     ev = pygame.event.get()
