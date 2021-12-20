@@ -16,6 +16,9 @@ SPRITES_FILE = "img/sprites.png"
 
 FPS = 10
 
+# initialize all imported pygame modules
+pygame.init()
+
 SPRITES_CORDS = {
     WHITE : {
         KING: {'location': (21, 23), 'dimensions': (170, 170)},
@@ -59,59 +62,60 @@ class SpriteSheet(object):
         return image
 
 def get_checking_pieces_pos(board):
-    return [piece.get_pos() for piece in b.check[b.whose_turn()]['pieces_causing_check']]
+    return [piece.get_pos() for piece in board.check[board.whose_turn()]['pieces_causing_check']]
 
-def displayBoard(win, b, moves):
-    
-    # Clear display
-    win.fill((255, 255, 255))
-    
-    # Create Checkered Grid
-    for col in range(8):
-        for row in range(8):
-            if (row, col) in moves:
-                colour = MOVE_COLOUR
-            elif (row, col) in get_checking_pieces_pos(b):
-                colour = CHECK_COLOUR
-            elif (col + row) % 2 == 0:
-                colour = BLACK_COLOUR
-            else:
-                colour = WHITE_COLOUR
-            pygame.draw.rect(win, colour, (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
-    
-    # Diplay Pieces
-    for piece in b.get_pieces(WHITE) + b.get_pieces(BLACK):
-        colour = piece.get_colour()
-        piece_type = piece.get_type()
-        pos = piece.get_pos()
-        row, col = pos[ROW], pos[COL]
-        win.blit(sprites.get_image(*SPRITES_CORDS[colour][piece_type]['location'], *SPRITES_CORDS[colour][piece_type]['dimensions']), (col * SQUARE_SIZE, row * SQUARE_SIZE))
+class Gui():
 
-    # Adding Text
-    if b.winner is None:
-        text_str = f"Player {b.whose_turn()}"
-    elif b.winner == STALEMATE:
-        text_str = "Stalemate!!!"
-    else:
-        text_str = f"Player {b.winner} has won!"
-    text_rect = ft_font.get_rect(text_str)
-    text_rect.center = (win.get_rect().midbottom[0], win.get_rect().midbottom[1] - text_rect.height)
-    ft_font.render_to(win, text_rect.topleft, text_str, BLACK_TEXT)
+    def __init__(self):
+        self.win = pygame.display.set_mode(DISPLAY_DIMENSIONS)
+        pygame.display.set_caption("Chess")
+        self.sprites = SpriteSheet()
+        self.font = pygame.freetype.SysFont('Sans', 50)
+        # TODO Make it get default system font
 
-# initialize all imported pygame modules
-pygame.init()
-ft_font = pygame.freetype.SysFont('Sans', 50)
+    def updateDisplay(self, board, moves):
+        # Clear display
+        self.win.fill((255, 255, 255))
+        
+        # Create Checkered Grid
+        for col in range(8):
+            for row in range(8):
+                if (row, col) in moves:
+                    colour = MOVE_COLOUR
+                elif (row, col) in get_checking_pieces_pos(board):
+                    colour = CHECK_COLOUR
+                elif (col + row) % 2 == 0:
+                    colour = BLACK_COLOUR
+                else:
+                    colour = WHITE_COLOUR
+                pygame.draw.rect(self.win, colour, (col * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+        
+        # Diplay Pieces
+        for piece in board.get_pieces(WHITE) + board.get_pieces(BLACK):
+            colour = piece.get_colour()
+            piece_type = piece.get_type()
+            pos = piece.get_pos()
+            row, col = pos[ROW], pos[COL]
+            self.win.blit(self.sprites.get_image(*SPRITES_CORDS[colour][piece_type]['location'], *SPRITES_CORDS[colour][piece_type]['dimensions']), (col * SQUARE_SIZE, row * SQUARE_SIZE))
 
-win = pygame.display.set_mode(DISPLAY_DIMENSIONS)
+        # Adding Text
+        if board.winner is None:
+            text_str = f"Player {board.whose_turn()}"
+        elif board.winner == STALEMATE:
+            text_str = "Stalemate!!!"
+        else:
+            text_str = f"Player {board.winner} has won!"
+        text_rect = self.font.get_rect(text_str)
+        text_rect.center = (self.win.get_rect().midbottom[0], self.win.get_rect().midbottom[1] - text_rect.height)
+        self.font.render_to(self.win, text_rect.topleft, text_str, BLACK_TEXT)
 
-pygame.display.set_caption("Chess")
+        # Update display
+        pygame.display.update()
 
-sprites = SpriteSheet()
+gui = Gui()
 b = Board()
-
-run = True
-
 clock = pygame.time.Clock()
+run = True
 
 selected_piece = None
 moves = []
@@ -146,11 +150,10 @@ while run and b.winner is None:
                     moves = []
     
     # Display Game Board
-    displayBoard(win, b, moves)
-    pygame.display.update()
+    gui.updateDisplay(b, moves)
 
 while run:
-    pygame.time.delay(5)
+    clock.tick(FPS)
 
     # Get all events
     ev = pygame.event.get()
