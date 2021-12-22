@@ -915,3 +915,15 @@ class Board:
                 return False
 
         return True
+    
+    def get_checking_pieces_pos(self, colour):
+        """
+        Returns the positions of all pieces causing check for colour's King
+
+        Args:
+            colour (string literal): Player BLACK/WHITE.
+
+        Returns:
+            List: Returns list of pos (row, col) all pieces causing check. 
+        """
+        return [piece.get_pos() for piece in self.check[colour]['pieces_causing_check']]

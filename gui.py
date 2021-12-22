@@ -62,9 +62,6 @@ class SpriteSheet(object):
         # Return the image
         return image
 
-def get_checking_pieces_pos(board):
-    return [piece.get_pos() for piece in board.check[board.whose_turn()]['pieces_causing_check']]
-
 class Gui():
 
     def __init__(self):
@@ -82,7 +79,7 @@ class Gui():
             for row in range(8):
                 if (row, col) in moves:
                     colour = MOVE_COLOUR
-                elif (row, col) in get_checking_pieces_pos(board):
+                elif (row, col) in board.get_checking_pieces_pos(board.whose_turn()):
                     colour = CHECK_COLOUR
                 elif (col + row) % 2 == 0:
                     colour = BLACK_COLOUR
