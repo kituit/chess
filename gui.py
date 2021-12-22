@@ -109,54 +109,63 @@ class Gui():
         # Update display
         pygame.display.update()
 
-gui = Gui()
-b = Board()
-clock = pygame.time.Clock()
-run = True
+def game(gui, board, clock):
 
-selected_piece = None
-moves = []
-while run and b.winner is None:
-    clock.tick(FPS)
+    selected_piece = None
+    moves = []
+    run = True
+    while run and board.winner is None:
+        clock.tick(FPS)
 
-    # Get all events
-    ev = pygame.event.get()
-    for event in ev:
+        # Get all events
+        ev = pygame.event.get()
+        for event in ev:
 
-        # Quit Game
-        if event.type == pygame.QUIT:
-            run = False
+            # Quit Game
+            if event.type == pygame.QUIT:
+                run = False
 
-        # Click on piece 
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            pos = pygame.mouse.get_pos()
-            square_coords = (pos[1] // SQUARE_SIZE, pos[0] // SQUARE_SIZE)
+            # Click on piece 
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                pos = pygame.mouse.get_pos()
+                square_coords = (pos[1] // SQUARE_SIZE, pos[0] // SQUARE_SIZE)
 
-            # If has already selected piece, choosing where to move piece
-            if selected_piece is not None and square_coords in moves:
-                b.move_piece(*selected_piece.get_pos(), *square_coords)
-                selected_piece = None
-                moves = []
-            # Has not already selected piece, choosing piece to move
-            else:
-                selected_piece = b.get_piece(square_coords[ROW], square_coords[COL])
-                if selected_piece is not None and selected_piece.get_colour() == b.whose_turn():
-                    moves = selected_piece.available_moves(b)
-                    print(moves)
-                else:
+                # If has already selected piece, choosing where to move piece
+                if selected_piece is not None and square_coords in moves:
+                    board.move_piece(*selected_piece.get_pos(), *square_coords)
+                    selected_piece = None
                     moves = []
+                # Has not already selected piece, choosing piece to move
+                else:
+                    selected_piece = board.get_piece(square_coords[ROW], square_coords[COL])
+                    if selected_piece is not None and selected_piece.get_colour() == board.whose_turn():
+                        moves = selected_piece.available_moves(board)
+                        print(moves)
+                    else:
+                        moves = []
+        
+        # Display Game Board
+        gui.updateDisplay(board, moves)
     
-    # Display Game Board
-    gui.updateDisplay(b, moves)
+    return run
 
-while run:
-    clock.tick(FPS)
+def epilogue(gui, clock):
+    run = True
+    while run:
+        clock.tick(FPS)
 
-    # Get all events
-    ev = pygame.event.get()
-    for event in ev:
+        # Get all events
+        ev = pygame.event.get()
+        for event in ev:
 
-        # Quit Game
-        if event.type == pygame.QUIT:
-            run = False
+            # Quit Game
+            if event.type == pygame.QUIT:
+                run = False
 
+if __name__ == '__main__':
+    gui = Gui()
+    board = Board()
+    clock = pygame.time.Clock()
+
+    if game(gui, board, clock):
+        epilogue(gui, clock)
