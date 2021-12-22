@@ -34,7 +34,8 @@ def cache_moves(method):
     decorator checks if has already calculated available moves for this turn. If it has, returns 
     stored values, else calculates and stores new values.
     """
-    def wrapper(self, board, *args, include_protections= False, **kwargs):
+    def wrapper(self, board, *args, **kwargs):
+        include_protections = kwargs['include_protections'] if 'include_protections' in kwargs else False
         if self.available_moves_cache['turn'] == board.turn and not include_protections:
             return self.available_moves_cache['moves']
         else:
@@ -439,6 +440,9 @@ class Pawn(Piece):
         Piece.__init__(self, pos, PAWN, colour)
         self.__direction = DOWN if colour == WHITE else UP
         self.__has_moved = False
+    
+    def set_has_moved(self):
+        self.__has_moved = True
 
     @cache_moves
     def available_moves(self, board, include_protections=False):
@@ -462,27 +466,23 @@ class Pawn(Piece):
         if next_row in range(8):
 
             # Moving pawn forward if nothing in front of it
-            if board.get_piece(next_row, col) is None or (board.get_piece(
-                    next_row, col).get_colour() == self.get_colour() and include_protections):
+            if board.get_piece(next_row, col) is None:
                 moves.append((next_row, col))
 
             # Moving pawn 2 places forward if nothing in front of it and has not yet moved
-            if ((board.get_piece(next_row + self.__direction, col) is None) or
-                (board.get_piece(next_row + self.__direction, col).get_colour()
-                 == self.get_colour() and include_protections)) and not self.__has_moved:
+            if board.get_piece(next_row, col) is None and board.get_piece(next_row + self.__direction, col) is None and not self.__has_moved:
                 moves.append((next_row + self.__direction, col))
-                self.has_moved = True
 
             # Moving pawn diagonally forward left if there is an enemy piece there
-            if (col + LEFT in range(8) and board.get_piece(next_row, col - 1) is not None
-                    and (board.get_piece(next_row, col - 1).get_colour() != self.colour
-                         or include_protections)):
+            if ((col + LEFT in range(8) and board.get_piece(next_row, col - 1) is not None
+                    and board.get_piece(next_row, col - 1).get_colour() != self.colour)
+                    or include_protections):
                 moves.append((next_row, col - 1))
 
             # Moving pawn diagonally forward right if there is an enemy piece there
-            if (col + RIGHT in range(8) and board.get_piece(next_row, col + 1) is not None
-                    and (board.get_piece(next_row, col + 1).get_colour() != self.colour
-                         or include_protections)):
+            if ((col + RIGHT in range(8) and board.get_piece(next_row, col + 1) is not None
+                    and board.get_piece(next_row, col + 1).get_colour() != self.colour)
+                    or include_protections):
                 moves.append((next_row, col + 1))
 
         # In case that is protecting King, filters out moves that would leave King exposed
@@ -832,6 +832,9 @@ class Board:
         self.grid[curr_row][curr_col] = None
         self.grid[new_row][new_col] = piece
         self.turn += 1
+
+        if piece.get_type() == PAWN:
+            piece.set_has_moved()
 
         # Take your King out of check by either capturing piece or blocking
         if target_piece in self.check[player]['pieces_causing_check']:
