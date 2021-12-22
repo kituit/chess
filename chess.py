@@ -34,13 +34,14 @@ def cache_moves(method):
     decorator checks if has already calculated available moves for this turn. If it has, returns 
     stored values, else calculates and stores new values.
     """
-    def wrapper(self, board, *args, **kwargs):
-        if self.available_moves_cache['turn'] == board.turn:
+    def wrapper(self, board, *args, include_protections= False, **kwargs):
+        if self.available_moves_cache['turn'] == board.turn and not include_protections:
             return self.available_moves_cache['moves']
         else:
             moves = method(self, board, *args, **kwargs)
-            self.available_moves_cache['turn'] = board.turn
-            self.available_moves_cache['moves'] = moves
+            if not include_protections:
+                self.available_moves_cache['turn'] = board.turn
+                self.available_moves_cache['moves'] = moves
             return moves
 
     return wrapper
@@ -687,7 +688,7 @@ class King(Piece):
             if in_bounds((trial_row, trial_col)):
                 piece = board.get_piece(trial_row, trial_col)
                 if (piece is None or
-                        piece.get_colour() != self.get_colour()) and (row, col) not in opposing_moves:
+                        piece.get_colour() != self.get_colour()) and (trial_row, trial_col) not in opposing_moves:
                     moves.append((trial_row, trial_col))
 
         # TODO Add castling feature
@@ -901,7 +902,7 @@ class Board:
         Returns:
             Bool: Returns True if player has no possible moves, else returns False.
         """
-        pieces = self.pieces[colour]
+        pieces = self.pieces[colour][::-1]
         for piece in pieces:
             moves = piece.available_moves(self)
             if len(moves) > 0:
