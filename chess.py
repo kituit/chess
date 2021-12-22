@@ -442,6 +442,9 @@ class Pawn(Piece):
         self.__has_moved = False
     
     def set_has_moved(self):
+        """
+        Records that Pawn has moved
+        """
         self.__has_moved = True
 
     @cache_moves
