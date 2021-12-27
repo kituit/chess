@@ -1,13 +1,17 @@
+import os
+os.environ['SDL_AUDIODRIVER'] = 'dsp'
 import pygame
 import pygame.freetype
 from chess import KING, QUEEN, BISHOP, ROOK, KNIGHT, PAWN, BLACK, STALEMATE, WHITE, Board, ROW, COL
 
+# Colours (r, g, b)
 BLACK_TEXT = (0, 0, 0)
 BLACK_COLOUR = (189,183,107)
 WHITE_COLOUR = (255, 255, 224)
 MOVE_COLOUR = (0, 0, 150)
 CHECK_COLOUR = (150, 0, 0)
 
+# GUI Size Constants
 BOARD_SIZE = 1000 # Must be divisible by 8 to display correctly, as needs to be evenly divided into 8 x 8 grid
 SQUARE_SIZE = BOARD_SIZE // 8
 DISPLAY_DIMENSIONS = (BOARD_SIZE, BOARD_SIZE + SQUARE_SIZE)
