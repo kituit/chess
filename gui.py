@@ -2,7 +2,7 @@ import os
 os.environ['SDL_AUDIODRIVER'] = 'dsp'
 import pygame
 import pygame.freetype
-from chess import KING, QUEEN, BISHOP, ROOK, KNIGHT, PAWN, BLACK, STALEMATE, WHITE, Board, ROW, COL
+from chess import KING, QUEEN, BISHOP, ROOK, KNIGHT, PAWN, BLACK, STALEMATE, WHITE, Board, ROW, COL, in_bounds
 
 # Colours (r, g, b)
 BLACK_TEXT = (0, 0, 0)
@@ -133,20 +133,21 @@ def game(gui, board, clock):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pos = pygame.mouse.get_pos()
                 square_coords = (pos[1] // SQUARE_SIZE, pos[0] // SQUARE_SIZE)
-
-                # If has already selected piece, choosing where to move piece
-                if selected_piece is not None and square_coords in moves:
-                    board.move_piece(*selected_piece.get_pos(), *square_coords)
-                    selected_piece = None
-                    moves = []
-                # Has not already selected piece, choosing piece to move
-                else:
-                    selected_piece = board.get_piece(square_coords[ROW], square_coords[COL])
-                    if selected_piece is not None and selected_piece.get_colour() == board.whose_turn():
-                        moves = selected_piece.available_moves(board)
-                        print(moves)
-                    else:
+                
+                if in_bounds(square_coords):
+                    # If has already selected piece, choosing where to move piece
+                    if selected_piece is not None and square_coords in moves:
+                        board.move_piece(*selected_piece.get_pos(), *square_coords)
+                        selected_piece = None
                         moves = []
+                    # Has not already selected piece, choosing piece to move
+                    else:
+                        selected_piece = board.get_piece(square_coords[ROW], square_coords[COL])
+                        if selected_piece is not None and selected_piece.get_colour() == board.whose_turn():
+                            moves = selected_piece.available_moves(board)
+                            print(moves)
+                        else:
+                            moves = []
         
         # Display Game Board
         gui.updateDisplay(board, moves)
