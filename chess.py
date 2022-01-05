@@ -26,6 +26,7 @@ VALUES = {PAWN: 1, KNIGHT: 3, BISHOP: 3, ROOK: 5, QUEEN: 9, KING: 1000}
 HORIZONTALS = [(0, LEFT), (0, RIGHT)]
 VERTICALS = [(UP, 0), (DOWN, 0)]
 DIAGONALS = [(UP, LEFT), (UP, RIGHT), (DOWN, LEFT), (DOWN, RIGHT)]
+ALL_DIRECTIONS = HORIZONTALS + VERTICALS + DIAGONALS
 
 
 def cache_moves(method):
@@ -669,10 +670,10 @@ class Queen(Piece):
         if board.check[self.get_colour()]['in_check']:
             moves = self.filter_moves_to_stop_check(moves, board)
 
-        return move
+        return moves
 
     def attacking_moves(self, board):
-        return self.moves_in_line(board, HORIZONTALS + VERTICALS + DIAGONALS, include_protections=True, ignore_king_block=True)
+        return self.moves_in_line(board, ALL_DIRECTIONS, include_protections=True, ignore_king_block=True)
 
 
 class King(Piece):
@@ -695,30 +696,32 @@ class King(Piece):
         Returns:
             List: Returns list of possible moves.
         """
-        moves = []
 
-        opposing_pieces = board.get_pieces(BLACK) if self.colour == WHITE else board.get_pieces(
-            WHITE)
 
         row = self.pos[ROW]
         col = self.pos[COL]
+        opponent = BLACK if self.colour == WHITE else WHITE
+
+        moves = [(row + row_iter, col + col_iter) for row_iter, col_iter in ALL_DIRECTIONS]
+        
+        # Filter out moves that are out of bounds
+        moves = list(filter(lambda pos: in_bounds(pos), moves))
+        
+        # Filter out moves that attack your own pieces
+        _ = lambda pos: board.get_piece(*pos) is None or board.get_piece(*pos).colour == opponent
+        moves = list(filter(_, moves))
 
         # Removing King from list of opposing pieces (King is first piece in list)
+        opposing_pieces = board.get_pieces(opponent)
         opposing_pieces = opposing_pieces[1:]
-        opposing_moves = []
+
         for piece in opposing_pieces:
-            opposing_moves += piece.attacking_moves(board)
+            if len(moves) == 0:
+                return moves
+            
+            opposing_moves = piece.attacking_moves(board)
+            moves = list(filter(lambda pos: pos not in opposing_moves, moves))
 
-        print(sorted(opposing_moves))
-        for row_iter, col_iter in HORIZONTALS + VERTICALS + DIAGONALS:
-            trial_row, trial_col = row + row_iter, col + col_iter
-            if in_bounds((trial_row, trial_col)):
-                piece = board.get_piece(trial_row, trial_col)
-                if (piece is None or
-                        piece.get_colour() != self.get_colour()) and (trial_row, trial_col) not in opposing_moves:
-                    moves.append((trial_row, trial_col))
-
-        # TODO Add castling feature
         return moves
 
 
