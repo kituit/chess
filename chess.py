@@ -36,11 +36,12 @@ def cache_moves(method):
     """
     def wrapper(self, board, *args, **kwargs):
         include_protections = kwargs['include_protections'] if 'include_protections' in kwargs else False
-        if self.available_moves_cache['turn'] == board.turn and not include_protections:
+        ignore_king_block = kwargs['ignore_king_block'] if 'ignore_king_block' in kwargs else False
+        if self.available_moves_cache['turn'] == board.turn and not (include_protections or ignore_king_block):
             return self.available_moves_cache['moves']
         else:
             moves = method(self, board, *args, **kwargs)
-            if not include_protections:
+            if not (include_protections or ignore_king_block):
                 self.available_moves_cache['turn'] = board.turn
                 self.available_moves_cache['moves'] = moves
             return moves
@@ -240,7 +241,7 @@ class Piece:
         """
         return self.type
 
-    def moves_in_line(self, board, increments, include_protections=False):
+    def moves_in_line(self, board, increments, include_protections=False, ignore_king_block=False):
         """
         Checks for possible unobstructed movement along a line dictated by a piece's initial 
         position (self.pos) and a list of possible increments. e.g increment (UP, RIGHT) would 
@@ -266,6 +267,7 @@ class Piece:
                     lines. 
         """
         moves = []
+        opponent = WHITE if self.colour == BLACK else BLACK
         for row_iter, col_iter in increments:
             row = self.pos[ROW] + row_iter
             col = self.pos[COL] + col_iter
@@ -276,7 +278,8 @@ class Piece:
                 else:
                     if target_piece.get_colour() != self.colour or include_protections:
                         moves.append((row, col))
-                    break
+                    if not (target_piece == board.king[opponent] and ignore_king_block):
+                        break
                 row += row_iter
                 col += col_iter
 
@@ -448,17 +451,13 @@ class Pawn(Piece):
         self.__has_moved = True
 
     @cache_moves
-    def available_moves(self, board, include_protections=False):
+    def available_moves(self, board):
         """
         Finds all available moves of a Pawn Piece given current state of the board.
 
         Args:
             board (Board): Instance of Board class that contains all information about the 
                             current state of game.
-            include_protections (bool, optional): Determines whether to include the positions 
-                                                    of pieces that this piece is protecting, i.e 
-                                                    positions that are reachable if allied piece was
-                                                    not there, defaults to False.
 
         Returns:
             List: Returns list of possible moves.
@@ -478,14 +477,12 @@ class Pawn(Piece):
 
             # Moving pawn diagonally forward left if there is an enemy piece there
             if ((col + LEFT in range(8) and board.get_piece(next_row, col - 1) is not None
-                    and board.get_piece(next_row, col - 1).get_colour() != self.colour)
-                    or include_protections):
+                    and board.get_piece(next_row, col - 1).get_colour() != self.colour)):
                 moves.append((next_row, col - 1))
 
             # Moving pawn diagonally forward right if there is an enemy piece there
             if ((col + RIGHT in range(8) and board.get_piece(next_row, col + 1) is not None
-                    and board.get_piece(next_row, col + 1).get_colour() != self.colour)
-                    or include_protections):
+                    and board.get_piece(next_row, col + 1).get_colour() != self.colour)):
                 moves.append((next_row, col + 1))
 
         # In case that is protecting King, filters out moves that would leave King exposed
@@ -498,6 +495,19 @@ class Pawn(Piece):
             moves = self.filter_moves_to_stop_check(moves, board)
 
         return moves
+    
+    def attacking_moves(self, board):
+        moves = []
+        next_row = self.pos[ROW] + self.__direction
+        col = self.pos[COL]
+
+        if in_bounds((next_row, col + LEFT)):
+            moves.append((next_row, col + LEFT))
+        if in_bounds((next_row, col + RIGHT)):
+            moves.append((next_row, col + RIGHT))
+        
+        return moves
+
 
 
 class Knight(Piece):
@@ -543,6 +553,9 @@ class Knight(Piece):
             moves = self.filter_moves_to_stop_check(moves, board)
 
         return moves
+    
+    def attacking_moves(self, board):
+        return self.available_moves(board, include_protections=True)
 
 
 class Bishop(Piece):
@@ -550,7 +563,7 @@ class Bishop(Piece):
         Piece.__init__(self, pos, BISHOP, colour)
 
     @cache_moves
-    def available_moves(self, board, include_protections=False):
+    def available_moves(self, board, include_protections=False, ignore_king_block=False):
         """
         Finds all available moves of a Bishop Piece given current state of the board.
 
@@ -565,7 +578,7 @@ class Bishop(Piece):
         Returns:
             List: Returns list of possible moves.
         """
-        moves = self.moves_in_line(board, DIAGONALS, include_protections=include_protections)
+        moves = self.moves_in_line(board, DIAGONALS, include_protections=include_protections, ignore_king_block=ignore_king_block)
 
         # In case that is protecting King, filters out moves that would leave King exposed
         protecting_king_from_piece = self.protecting_king(board)
@@ -584,7 +597,7 @@ class Rook(Piece):
         Piece.__init__(self, pos, ROOK, colour)
 
     @cache_moves
-    def available_moves(self, board, include_protections=False):
+    def available_moves(self, board, include_protections=False, ignore_king_block=False):
         """
         Finds all available moves of a Rook Piece given current state of the board.
 
@@ -601,7 +614,8 @@ class Rook(Piece):
         """
         moves = self.moves_in_line(board,
                                    HORIZONTALS + VERTICALS,
-                                   include_protections=include_protections)
+                                   include_protections=include_protections,
+                                   ignore_king_block=ignore_king_block)
 
         # In case that is protecting King, filters out moves that would leave King exposed
         protecting_king_from_piece = self.protecting_king(board)
@@ -620,7 +634,7 @@ class Queen(Piece):
         Piece.__init__(self, pos, QUEEN, colour)
 
     @cache_moves
-    def available_moves(self, board, include_protections=False):
+    def available_moves(self, board, include_protections=False, ignore_king_block=False):
         """
         Finds all available moves of a Queen Piece given current state of the board.
 
@@ -637,7 +651,8 @@ class Queen(Piece):
         """
         moves = self.moves_in_line(board,
                                    HORIZONTALS + VERTICALS + DIAGONALS,
-                                   include_protections=include_protections)
+                                   include_protections=include_protections,
+                                   ignore_king_block=ignore_king_block)
 
         # In case that is protecting King, filters out moves that would leave King exposed
         protecting_king_from_piece = self.protecting_king(board)
@@ -683,8 +698,9 @@ class King(Piece):
         opposing_pieces = opposing_pieces[1:]
         opposing_moves = []
         for piece in opposing_pieces:
-            opposing_moves += piece.available_moves(board, include_protections=True)
+            opposing_moves += piece.available_moves(board, include_protections=True, ignore_king_block=True)
 
+        print(sorted(opposing_moves))
         for row_iter, col_iter in HORIZONTALS + VERTICALS + DIAGONALS:
             trial_row = row + row_iter
             trial_col = col + col_iter
@@ -695,7 +711,6 @@ class King(Piece):
                     moves.append((trial_row, trial_col))
 
         # TODO Add castling feature
-
         return moves
 
 
@@ -839,8 +854,11 @@ class Board:
         if piece.get_type() == PAWN:
             piece.set_has_moved()
 
-        # Take your King out of check by either capturing piece or blocking
-        if target_piece in self.check[player]['pieces_causing_check']:
+        # Take your King out of check by either moving king, capturing piece or blocking
+        if piece.get_type() == KING and self.check[player]['in_check']:
+            self.check[player]['pieces_causing_check'].clear()
+            self.check[player]['in_check'] = False
+        elif target_piece in self.check[player]['pieces_causing_check']:
             self.check[player]['pieces_causing_check'].remove(target_piece)
             self.check[player]['in_check'] = len(self.check[player]['pieces_causing_check']) > 1
         elif self.check[player]['in_check']:
