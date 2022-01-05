@@ -590,6 +590,9 @@ class Bishop(Piece):
             moves = self.filter_moves_to_stop_check(moves, board)
 
         return moves
+    
+    def attacking_moves(self, board):
+        return self.moves_in_line(board, DIAGONALS, include_protections=True, ignore_king_block=True)
 
 
 class Rook(Piece):
@@ -628,6 +631,9 @@ class Rook(Piece):
 
         return moves
 
+    def attacking_moves(self, board):
+        return self.moves_in_line(board, HORIZONTALS + VERTICALS, include_protections=True, ignore_king_block=True)
+
 
 class Queen(Piece):
     def __init__(self, pos, colour):
@@ -663,7 +669,10 @@ class Queen(Piece):
         if board.check[self.get_colour()]['in_check']:
             moves = self.filter_moves_to_stop_check(moves, board)
 
-        return moves
+        return move
+
+    def attacking_moves(self, board):
+        return self.moves_in_line(board, HORIZONTALS + VERTICALS + DIAGONALS, include_protections=True, ignore_king_block=True)
 
 
 class King(Piece):
@@ -698,12 +707,11 @@ class King(Piece):
         opposing_pieces = opposing_pieces[1:]
         opposing_moves = []
         for piece in opposing_pieces:
-            opposing_moves += piece.available_moves(board, include_protections=True, ignore_king_block=True)
+            opposing_moves += piece.attacking_moves(board)
 
         print(sorted(opposing_moves))
         for row_iter, col_iter in HORIZONTALS + VERTICALS + DIAGONALS:
-            trial_row = row + row_iter
-            trial_col = col + col_iter
+            trial_row, trial_col = row + row_iter, col + col_iter
             if in_bounds((trial_row, trial_col)):
                 piece = board.get_piece(trial_row, trial_col)
                 if (piece is None or
