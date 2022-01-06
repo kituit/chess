@@ -36,13 +36,12 @@ def cache_moves(method):
     stored values, else calculates and stores new values.
     """
     def wrapper(self, board, *args, **kwargs):
-        include_protections = kwargs['include_protections'] if 'include_protections' in kwargs else False
-        ignore_king_block = kwargs['ignore_king_block'] if 'ignore_king_block' in kwargs else False
-        if self.available_moves_cache['turn'] == board.turn and not (include_protections or ignore_king_block):
+        has_modifiers = len(kwargs) > 0
+        if self.available_moves_cache['turn'] == board.turn and not has_modifiers:
             return self.available_moves_cache['moves']
         else:
             moves = method(self, board, *args, **kwargs)
-            if not (include_protections or ignore_king_block):
+            if not has_modifiers:
                 self.available_moves_cache['turn'] = board.turn
                 self.available_moves_cache['moves'] = moves
             return moves
