@@ -1,4 +1,5 @@
 import os
+import sys
 os.environ['SDL_AUDIODRIVER'] = 'dsp'
 import pygame
 import pygame.freetype
@@ -19,7 +20,7 @@ FONT_SIZE = SQUARE_SIZE // 2
 
 SPRITES_FILE = "img/sprites.png"
 
-FPS = 10
+FPS = 7
 
 # initialize all imported pygame modules
 pygame.init()
@@ -43,12 +44,21 @@ SPRITES_CORDS = {
     }
 }
 
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
 class SpriteSheet(object):
     """ Class used to grab images out of a sprite sheet. """
 
     def __init__(self):
         # Load the sprite sheet.
-        self.sprite_sheet = pygame.image.load(SPRITES_FILE)
+        self.sprite_sheet = pygame.image.load(resource_path(SPRITES_FILE))
 
     def get_image(self, x, y, width, height):
         """ Grab a single image out of a larger spritesheet
