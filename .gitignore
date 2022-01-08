@@ -2,3 +2,4 @@ dist
 test?.txt
 __pycache__
 build
+spec
