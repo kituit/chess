@@ -497,6 +497,16 @@ class Pawn(Piece):
         return moves
     
     def attacking_moves(self, board):
+        """
+        Returns all possible moves that involve a Pawn capturing another piece
+
+        Args:
+            board (Board): Instance of Board class that contains all information about the 
+                            current state of game.
+
+        Returns:
+            List: Returns list of possible moves.
+        """
         moves = []
         next_row = self.pos[ROW] + self.__direction
         col = self.pos[COL]
