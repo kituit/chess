@@ -137,8 +137,8 @@ def in_line(pos1, pos2, pos3):
             return True
 
         # In diagonal line
-        if direction_pos1_pos3[ROW] == direction_pos1_pos3[COL] and direction_pos1_pos2[
-                ROW] == direction_pos1_pos2[COL]:
+        if abs(direction_pos1_pos3[ROW]) == abs(direction_pos1_pos3[COL]) and abs(direction_pos1_pos2[
+                ROW]) == abs(direction_pos1_pos2[COL]):
             return True
 
     return False
@@ -433,7 +433,8 @@ class Piece:
                 filtered_moves.append(move)
             # Block piece, note cannot block a check caused by a Knight
             elif opposing_piece.get_type() != KNIGHT:
-                if in_line(opposing_piece.get_pos(), board.king[self.get_colour()].get_pos(), move):
+                is_in_line = in_line(opposing_piece.get_pos(), board.king[self.get_colour()].get_pos(), move)
+                if is_in_line:
                     filtered_moves.append(move)
         return filtered_moves
 
