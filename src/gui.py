@@ -1,5 +1,7 @@
 import os
 import sys
+import time
+from urllib import request
 os.environ['SDL_AUDIODRIVER'] = 'dsp'
 import pygame
 import pygame.freetype
@@ -56,6 +58,9 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
+class Quit(Exception):
+    pass
+
 class SpriteSheet(object):
     """ Class used to grab images out of a sprite sheet. """
 
@@ -87,7 +92,7 @@ class Gui():
         self.sprites = SpriteSheet()
         self.font = pygame.freetype.SysFont('Sans', FONT_SIZE)
 
-    def drawBoard(self, board, moves):
+    def drawBoard(self, board, moves=[]):
         # Clear display
         self.win.fill((255, 255, 255))
         
@@ -142,7 +147,7 @@ class Game():
 
 
     def displayMove(self, moves):
-        self.gui.drawBoard(self.board, moves)
+        self.gui.drawBoard(self.board, moves=moves)
 
         if self.board.winner is None:
             text_str = f"Player {self.board.whose_turn()}"
@@ -151,13 +156,16 @@ class Game():
         else:
             text_str = f"Player {self.board.winner} has won!"
         self.gui.drawText(text_str)
+    
+    def displayWaiting(self):
+        self.gui.drawBoard(self.board)
+        self.gui.drawText("Waiting for other player")
 
-    def doGame(self):
+    def playMain(self):
 
         selected_piece = None
         moves = DEFAULT_MOVES
-        run = True
-        while run and self.board.winner is None:
+        while self.board.winner is None:
             self.clock.tick(FPS)
 
             # Get all events
@@ -166,7 +174,7 @@ class Game():
 
                 # Quit Game
                 if event.type == pygame.QUIT:
-                    run = False
+                    raise Quit
 
                 # Click on piece 
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -190,10 +198,8 @@ class Game():
             
             # Display Game Board
             self.displayMove(moves)
-        
-        return run
 
-    def epilogue(self):
+    def playEpilogue(self):
         run = True
         while run:
             self.clock.tick(FPS)
@@ -204,11 +210,33 @@ class Game():
 
                 # Quit Game
                 if event.type == pygame.QUIT:
-                    run = False
+                    raise Quit
     
+    def playWaiting(self):
+        self.displayWaiting()
+        while True:
+            if requests.get(f"{self.server_config['address']}/game/active").json():
+                break
+            
+            self.clock.tick(FPS)
+
+            # Get all events
+            ev = pygame.event.get()
+            for event in ev:
+
+                # Quit Game
+                if event.type == pygame.QUIT:
+                    raise Quit
+
     def play(self):
-        if self.doGame():
-            self.epilogue()
+        
+        try:
+            if self.server_config is not None:
+                self.playWaiting()
+            self.playMain()
+            self.playEpilogue()
+        except Quit:
+            print("Goodbye")
 
 if __name__ == '__main__':
     g = Game()
