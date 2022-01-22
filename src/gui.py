@@ -84,7 +84,7 @@ class Gui():
         self.sprites = SpriteSheet()
         self.font = pygame.freetype.SysFont('Sans', FONT_SIZE)
 
-    def updateDisplay(self, board, moves):
+    def drawBoard(self, board, moves):
         # Clear display
         self.win.fill((255, 255, 255))
         
@@ -108,20 +108,28 @@ class Gui():
             pos = piece.get_pos()
             row, col = pos[ROW], pos[COL]
             self.win.blit(self.sprites.get_image(*SPRITES_CORDS[colour][piece_type]['location'], *SPRITES_CORDS[colour][piece_type]['dimensions']), (col * SQUARE_SIZE, row * SQUARE_SIZE))
-
-        # Adding Text
-        if board.winner is None:
-            text_str = f"Player {board.whose_turn()}"
-        elif board.winner == STALEMATE:
-            text_str = "Stalemate!!!"
-        else:
-            text_str = f"Player {board.winner} has won!"
+        
+        # Update display
+        pygame.display.update()
+        
+    def drawText(self, text_str):
         text_rect = self.font.get_rect(text_str)
         text_rect.center = (self.win.get_rect().midbottom[0], self.win.get_rect().midbottom[1] - text_rect.height)
         self.font.render_to(self.win, text_rect.topleft, text_str, BLACK_TEXT)
 
         # Update display
         pygame.display.update()
+
+def displayMove(gui, board, moves):
+    gui.drawBoard(board, moves)
+
+    if board.winner is None:
+        text_str = f"Player {board.whose_turn()}"
+    elif board.winner == STALEMATE:
+        text_str = "Stalemate!!!"
+    else:
+        text_str = f"Player {board.winner} has won!"
+    gui.drawText(text_str)
 
 def game(gui, board, clock):
 
@@ -160,7 +168,7 @@ def game(gui, board, clock):
                             moves = []
         
         # Display Game Board
-        gui.updateDisplay(board, moves)
+        displayMove(gui, board, moves)
     
     return run
 
