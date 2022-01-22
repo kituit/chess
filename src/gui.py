@@ -4,6 +4,7 @@ os.environ['SDL_AUDIODRIVER'] = 'dsp'
 import pygame
 import pygame.freetype
 from chess import KING, QUEEN, BISHOP, ROOK, KNIGHT, PAWN, BLACK, STALEMATE, WHITE, Board, ROW, COL, in_bounds
+import requests
 
 # Colours (r, g, b)
 BLACK_TEXT = (0, 0, 0)
@@ -19,6 +20,8 @@ DISPLAY_DIMENSIONS = (BOARD_SIZE, BOARD_SIZE + SQUARE_SIZE)
 FONT_SIZE = SQUARE_SIZE // 2
 
 SPRITES_FILE = "src/img/sprites.png"
+
+DEFAULT_MOVES = []
 
 FPS = 7
 
@@ -120,75 +123,95 @@ class Gui():
         # Update display
         pygame.display.update()
 
-def displayMove(gui, board, moves):
-    gui.drawBoard(board, moves)
+class Game():
 
-    if board.winner is None:
-        text_str = f"Player {board.whose_turn()}"
-    elif board.winner == STALEMATE:
-        text_str = "Stalemate!!!"
-    else:
-        text_str = f"Player {board.winner} has won!"
-    gui.drawText(text_str)
+    def __init__(self):
+        self.gui = Gui()
+        self.board = Board()
+        self.clock = pygame.time.Clock()
 
-def game(gui, board, clock):
+        if len(sys.argv) == 2:
+            player_resp = requests.put(f"{sys.argv[1]}/player/new")
+            if player_resp.status_code == 404:
+                raise ValueError("Server not found")
+            elif player_resp.status_code != 200:
+                raise ValueError("Server error")
+            self.server_config = {'active': True, 'address': sys.argv[1], 'player': player_resp.json()}
+        else:
+            self.server_config = None
 
-    selected_piece = None
-    moves = []
-    run = True
-    while run and board.winner is None:
-        clock.tick(FPS)
 
-        # Get all events
-        ev = pygame.event.get()
-        for event in ev:
+    def displayMove(self, moves):
+        self.gui.drawBoard(self.board, moves)
 
-            # Quit Game
-            if event.type == pygame.QUIT:
-                run = False
+        if self.board.winner is None:
+            text_str = f"Player {self.board.whose_turn()}"
+        elif self.board.winner == STALEMATE:
+            text_str = "Stalemate!!!"
+        else:
+            text_str = f"Player {self.board.winner} has won!"
+        self.gui.drawText(text_str)
 
-            # Click on piece 
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                pos = pygame.mouse.get_pos()
-                square_coords = (pos[1] // SQUARE_SIZE, pos[0] // SQUARE_SIZE)
-                
-                if in_bounds(square_coords):
-                    # If has already selected piece, choosing where to move piece
-                    if selected_piece is not None and square_coords in moves:
-                        board.move_piece(*selected_piece.get_pos(), *square_coords)
-                        selected_piece = None
-                        moves = []
-                    # Has not already selected piece, choosing piece to move
-                    else:
-                        selected_piece = board.get_piece(square_coords[ROW], square_coords[COL])
-                        if selected_piece is not None and selected_piece.get_colour() == board.whose_turn():
-                            moves = selected_piece.available_moves(board)
-                            print(moves)
+    def doGame(self):
+
+        selected_piece = None
+        moves = DEFAULT_MOVES
+        run = True
+        while run and self.board.winner is None:
+            self.clock.tick(FPS)
+
+            # Get all events
+            ev = pygame.event.get()
+            for event in ev:
+
+                # Quit Game
+                if event.type == pygame.QUIT:
+                    run = False
+
+                # Click on piece 
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    pos = pygame.mouse.get_pos()
+                    square_coords = (pos[1] // SQUARE_SIZE, pos[0] // SQUARE_SIZE)
+                    
+                    if in_bounds(square_coords):
+                        # If has already selected piece, choosing where to move piece
+                        if selected_piece is not None and square_coords in moves:
+                            self.board.move_piece(*selected_piece.get_pos(), *square_coords)
+                            selected_piece = None
+                            moves = DEFAULT_MOVES
+                        # Has not already selected piece, choosing piece to move
                         else:
-                            moves = []
+                            selected_piece = self.board.get_piece(square_coords[ROW], square_coords[COL])
+                            if selected_piece is not None and selected_piece.get_colour() == self.board.whose_turn():
+                                moves = selected_piece.available_moves(self.board)
+                                print(moves)
+                            else:
+                                moves = DEFAULT_MOVES
+            
+            # Display Game Board
+            self.displayMove(moves)
         
-        # Display Game Board
-        displayMove(gui, board, moves)
+        return run
+
+    def epilogue(self):
+        run = True
+        while run:
+            self.clock.tick(FPS)
+
+            # Get all events
+            ev = pygame.event.get()
+            for event in ev:
+
+                # Quit Game
+                if event.type == pygame.QUIT:
+                    run = False
     
-    return run
-
-def epilogue(gui, clock):
-    run = True
-    while run:
-        clock.tick(FPS)
-
-        # Get all events
-        ev = pygame.event.get()
-        for event in ev:
-
-            # Quit Game
-            if event.type == pygame.QUIT:
-                run = False
+    def play(self):
+        if self.doGame():
+            self.epilogue()
 
 if __name__ == '__main__':
-    gui = Gui()
-    board = Board()
-    clock = pygame.time.Clock()
+    g = Game()
+    g.play()
 
-    if game(gui, board, clock):
-        epilogue(gui, clock)
+
