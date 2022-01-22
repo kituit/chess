@@ -1,7 +1,5 @@
 import os
 import sys
-import time
-from urllib import request
 os.environ['SDL_AUDIODRIVER'] = 'dsp'
 import pygame
 import pygame.freetype
@@ -161,6 +159,12 @@ class Game():
         self.gui.drawBoard(self.board)
         self.gui.drawText("Waiting for other player")
     
+    def is_active(self):
+        active = True
+        if self.server_config is not None:
+            active = requests.get(f"{self.server_config['address']}/game/active").json()
+        return active
+    
     def is_waiting(self):
         waiting = False
         if self.server_config is not None and self.board.whose_turn() != self.server_config['player']:
@@ -188,36 +192,14 @@ class Game():
             for event in ev:
 
                 # Quit Game
-                if event.type == pygame.QUIT:
+                if event.type == pygame.QUIT or not self.is_active():
                     raise Quit
 
                 if not waiting:
                 # Click on piece 
                     if event.type == pygame.MOUSEBUTTONDOWN:
-                        # moves, selected_piece = self.doMove(selected_piece, moves)
                         pos = pygame.mouse.get_pos()
-                        square_coords = (pos[1] // SQUARE_SIZE, pos[0] // SQUARE_SIZE)
-                        if in_bounds(square_coords):
-                            # If has already selected piece, choosing where to move piece
-                            if selected_piece is not None and square_coords in moves:
-                                if self.server_config is not None:
-                                    requests.post(f"{self.server_config['address']}/move", json= {
-                                        'player': self.server_config['player'],
-                                        'move': [selected_piece.get_pos(), square_coords]
-                                    })
-                                self.board.move_piece(*selected_piece.get_pos(), *square_coords)
-                                selected_piece = None
-                                moves = DEFAULT_MOVES
-
-                            # Has not already selected piece, choosing piece to move
-                            else:
-                                selected_piece = self.board.get_piece(square_coords[ROW], square_coords[COL])
-                                if selected_piece is not None and selected_piece.get_colour() == self.board.whose_turn():
-                                    moves = selected_piece.available_moves(self.board)
-                                    print(moves)
-                                else:
-                                    moves = DEFAULT_MOVES
-
+                        moves, selected_piece = self.doMove(pos, selected_piece, moves)
             
             # Display Game Board
             if waiting:
@@ -225,8 +207,7 @@ class Game():
             else:
                 self.displayMove(moves)
 
-    def doMove(self, selected_piece, moves):
-        pos = pygame.mouse.get_pos()
+    def doMove(self, pos, selected_piece, moves):
         square_coords = (pos[1] // SQUARE_SIZE, pos[0] // SQUARE_SIZE)
         if in_bounds(square_coords):
             # If has already selected piece, choosing where to move piece
@@ -268,7 +249,7 @@ class Game():
     def playWaiting(self):
         self.displayWaiting()
         while True:
-            if requests.get(f"{self.server_config['address']}/game/active").json():
+            if self.is_active():
                 break
             
             self.clock.tick(FPS)
@@ -289,7 +270,10 @@ class Game():
             self.playMain()
             self.playEpilogue()
         except Quit:
-            print("Goodbye")
+            print("Goodbye")        
+        
+        if self.server_config is not None:
+            requests.delete(f"{self.server_config['address']}/game/reset")
 
 if __name__ == '__main__':
     g = Game()
