@@ -4,10 +4,12 @@ from json import dumps
 from flask import Flask, request
 from chess import WHITE, BLACK
 
-most_recent_move = {'player': BLACK, 'move': []}
-assigned_white = False
-assigned_black = False
-game_active = False
+game_data = {
+    'most_recent_move': {'player': BLACK, 'move': []},
+    'assigned_white': False,
+    'assigned_black': False,
+    'game_active': False
+}
 
 
 def defaultHandler(err):
@@ -51,42 +53,42 @@ def validPost(data):
 
 @APP.route('/move', methods=['GET'])
 def get_most_recent():
-    return dumps(most_recent_move)
+    return dumps(game_data['most_recent_move'])
 
 @APP.route('/move', methods=['POST'])
 def post_new_move():
     data = request.get_json()
-    global most_recent_move
+    global game_data
     validPost(data)
-    most_recent_move = data
+    game_data['most_recent_move'] = data
     return {}
 
 @APP.route('/player/new', methods=['PUT'])
 def new_player():
-    global assigned_white
-    global assigned_black
-    if not assigned_white:
-        assigned_white = True
+    global game_data
+    if not game_data['assigned_white']:
+        game_data['assigned_white'] = True
         return dumps(WHITE)
-    elif not assigned_black:
-        global game_active
-        game_active = True
-        assigned_black = True
+    elif not game_data['assigned_black']:
+        game_data['game_active'] = True
+        game_data['assigned_black'] = True
         return dumps(BLACK)
     else:
         raise AccessError("Already two players playing")
 
 @APP.route('/game/active', methods=['GET'])
 def is_game_active():
-    return dumps(game_active)
+    return dumps(game_data['game_active'])
 
 @APP.route('/game/reset', methods=['DELETE'])
 def clear_game():
-    global assigned_white, assigned_black, game_active, most_recent_move
-    most_recent_move = {'player': BLACK, 'move': []}
-    assigned_white = False
-    assigned_black = False
-    game_active = False
+    global game_data
+    game_data = {
+        'most_recent_move': {'player': BLACK, 'move': []},
+        'assigned_white': False,
+        'assigned_black': False,
+        'game_active': False
+    }
     return {}
 
 if __name__ == '__main__':
