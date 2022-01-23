@@ -161,7 +161,7 @@ class Game():
     
     def is_active(self):
         active = True
-        if self.server_config is not None:
+        if self.server_config is not None and self.board.whose_turn() != self.server_config['player']:
             active = requests.get(f"{self.server_config['address']}/game/active").json()
         return active
     
@@ -212,12 +212,15 @@ class Game():
         if in_bounds(square_coords):
             # If has already selected piece, choosing where to move piece
             if selected_piece is not None and square_coords in moves:
+                start_pos, end_pos = selected_piece.get_pos(), square_coords
+                self.board.move_piece(*start_pos, *end_pos)
                 if self.server_config is not None:
+                    self.displayWaiting()
                     requests.post(f"{self.server_config['address']}/move", json= {
                         'player': self.server_config['player'],
-                        'move': [selected_piece.get_pos(), square_coords]
+                        'move': [start_pos, end_pos]
                     })
-                self.board.move_piece(*selected_piece.get_pos(), *square_coords)
+
                 selected_piece = None
                 moves = DEFAULT_MOVES
 
@@ -249,7 +252,7 @@ class Game():
     def playWaiting(self):
         self.displayWaiting()
         while True:
-            if self.is_active():
+            if requests.get(f"{self.server_config['address']}/game/active").json():
                 break
             
             self.clock.tick(FPS)
