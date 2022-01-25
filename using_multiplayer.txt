@@ -1,0 +1,9 @@
+# Required packages to play (pip3 install)
+pygame
+paho-mqtt
+
+# Download repo from here (probs easiest is just downloading zip)
+https://github.com/kituit/chess
+
+# To play, run the following command
+python3 src/game.py --mqtt test.mosquitto.org
