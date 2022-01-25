@@ -36,9 +36,9 @@ Haven't tested this beyond a local network but roughly speaking do the following
 
         python3 -m flask run --host=0.0.0.0
 
-3. Copy the address from the flask output in the form http://[domain]:[port], and then run the following command from the project directory on the device looking to play chess:
+3. Copy the address from the flask output in the form http://\<domain\>:\<port\>, and then run the following command from the project directory on the device looking to play chess:
     
-        python3 src/game.py --flask http://\<domain\>:\<port\>
+        python3 src/game.py --flask http://<domain>:<port>
 
 ### MQTT
 
@@ -52,7 +52,7 @@ To use, do the following:
 
 2. Run the following:
 
-        python3 src/game.py --mqtt \<host, e.g test.mosquitto.org\>
+        python3 src/game.py --mqtt <host, e.g test.mosquitto.org>
 
 
 
