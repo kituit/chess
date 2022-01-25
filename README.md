@@ -30,15 +30,15 @@ Haven't tested this beyond a local network but roughly speaking do the following
 
 1. Install flask on server device:
 
-    pip3 install flask
+        pip3 install flask
 
 2. Run the following command to start the server:
 
-    python3 -m flask run --host=0.0.0.0
+        python3 -m flask run --host=0.0.0.0
 
 3. Copy the address from the flask output in the form http://[domain]:[port], and then run the following command from the project directory on the device looking to play chess:
     
-    python3 src/game.py --flask http://\<domain\>:\<port\>
+        python3 src/game.py --flask http://\<domain\>:\<port\>
 
 ### MQTT
 
@@ -48,11 +48,11 @@ To use, do the following:
 
 1. Install paho-mqtt:
 
-    pip3 install paho-mqtt
+        pip3 install paho-mqtt
 
 2. Run the following:
 
-    python3 src/game.py --mqtt \<host, e.g test.mosquitto.org\>
+        python3 src/game.py --mqtt \<host, e.g test.mosquitto.org\>
 
 
 
