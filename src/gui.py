@@ -5,6 +5,7 @@ import pygame
 import pygame.freetype
 from chess import KING, QUEEN, BISHOP, ROOK, KNIGHT, PAWN, BLACK, STALEMATE, WHITE, Board, ROW, COL, in_bounds
 import requests
+from client_mqtt import ChessMqttClient
 
 # Colours (r, g, b)
 BLACK_TEXT = (0, 0, 0)
@@ -20,10 +21,24 @@ DISPLAY_DIMENSIONS = (BOARD_SIZE, BOARD_SIZE + SQUARE_SIZE)
 FONT_SIZE = SQUARE_SIZE // 2
 
 SPRITES_FILE = "src/img/sprites.png"
+FPS = 7
 
 DEFAULT_MOVES = []
 
-FPS = 7
+
+MODE_DEFAULT = "--default"
+MODE_FLASK = "--flask"
+MODE_MQTT = "--mqtt"
+
+if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] == MODE_DEFAULT):
+    MODE = MODE_DEFAULT
+elif len(sys.argv) == 3 and sys.argv[1] == MODE_FLASK:
+    MODE = MODE_FLASK
+elif len(sys.argv) == 3 and sys.argv[1] == MODE_MQTT:
+    MODE = MODE_MQTT
+else:
+    raise ValueError("Invalid command line args")
+
 
 # initialize all imported pygame modules
 pygame.init()
@@ -132,14 +147,19 @@ class Game():
         self.gui = Gui()
         self.board = Board()
         self.clock = pygame.time.Clock()
+        self.server_config = None
+        self.mqtt = None
 
-        if len(sys.argv) == 2:
+        if MODE == MODE_FLASK:
             player_resp = requests.put(f"{sys.argv[1]}/player/new")
             if player_resp.status_code == 404:
                 raise ValueError("Server not found")
             elif player_resp.status_code != 200:
                 raise ValueError("Server error")
             self.server_config = {'active': True, 'address': sys.argv[1], 'player': player_resp.json()}
+        elif MODE == MODE_MQTT:
+            self.mqtt = ChessMqttClient(sys.argv[2], self.board)
+            self.mqtt.start()
         else:
             self.server_config = None
 
@@ -159,15 +179,22 @@ class Game():
         self.gui.drawBoard(self.board)
         self.gui.drawText("Waiting for other player")
     
+    def displayForfeit(self):
+        self.gui.drawBoard(self.board)
+        self.gui.drawText("Opponent has forfeited")
+    
     def is_active(self):
         active = True
-        if self.server_config is not None and self.board.whose_turn() != self.server_config['player']:
+        if MODE == MODE_FLASK and self.board.whose_turn() != self.server_config['player']:
             active = requests.get(f"{self.server_config['address']}/game/active").json()
+        elif MODE == MODE_MQTT:
+            active = self.mqtt.is_active()
+        
         return active
     
     def is_waiting(self):
         waiting = False
-        if self.server_config is not None and self.board.whose_turn() != self.server_config['player']:
+        if MODE == MODE_FLASK and self.board.whose_turn() != self.server_config['player']:
             most_recent_move = requests.get(f"{self.server_config['address']}/move").json()
             if most_recent_move['player'] == self.server_config['player']:
                 waiting = True
@@ -175,14 +202,33 @@ class Game():
                 waiting = False
                 start_pos, end_pos = most_recent_move['move'][0], most_recent_move['move'][1]
                 self.board.move_piece(*start_pos, *end_pos)
+        if MODE == MODE_MQTT:
+            waiting = self.mqtt.is_waiting()
 
         return waiting
 
-    def playMain(self):
+    def playPrologue(self):
+        self.displayWaiting()
+        while True:
+            if MODE == MODE_FLASK and requests.get(f"{self.server_config['address']}/game/active").json():
+                break
+            elif MODE == MODE_MQTT and self.mqtt.is_active():
+                break
+            
+            self.clock.tick(FPS)
 
+            # Get all events
+            ev = pygame.event.get()
+            for event in ev:
+
+                # Quit Game
+                if event.type == pygame.QUIT:
+                    raise Quit
+
+    def playMain(self):
         selected_piece = None
         moves = DEFAULT_MOVES
-        while self.board.winner is None:
+        while self.board.winner is None and self.is_active():
             self.clock.tick(FPS)
 
             waiting = self.is_waiting()
@@ -192,7 +238,7 @@ class Game():
             for event in ev:
 
                 # Quit Game
-                if event.type == pygame.QUIT or not self.is_active():
+                if event.type == pygame.QUIT:
                     raise Quit
 
                 if not waiting:
@@ -214,12 +260,14 @@ class Game():
             if selected_piece is not None and square_coords in moves:
                 start_pos, end_pos = selected_piece.get_pos(), square_coords
                 self.board.move_piece(*start_pos, *end_pos)
-                if self.server_config is not None:
+                if MODE == MODE_FLASK:
                     self.displayWaiting()
                     requests.post(f"{self.server_config['address']}/move", json= {
                         'player': self.server_config['player'],
                         'move': [start_pos, end_pos]
                     })
+                elif MODE == MODE_MQTT:
+                    self.mqtt.publish_move(start_pos, end_pos)
 
                 selected_piece = None
                 moves = DEFAULT_MOVES
@@ -237,24 +285,11 @@ class Game():
 
 
     def playEpilogue(self):
+        if MODE == MODE_MQTT and self.mqtt.opponent_has_quit():
+            self.displayForfeit()
+
         run = True
         while run:
-            self.clock.tick(FPS)
-
-            # Get all events
-            ev = pygame.event.get()
-            for event in ev:
-
-                # Quit Game
-                if event.type == pygame.QUIT:
-                    raise Quit
-    
-    def playWaiting(self):
-        self.displayWaiting()
-        while True:
-            if requests.get(f"{self.server_config['address']}/game/active").json():
-                break
-            
             self.clock.tick(FPS)
 
             # Get all events
@@ -268,15 +303,18 @@ class Game():
     def play(self):
         
         try:
-            if self.server_config is not None:
-                self.playWaiting()
+            if MODE in [MODE_FLASK, MODE_MQTT]:
+                self.playPrologue()
             self.playMain()
             self.playEpilogue()
-        except Quit:
+        except (Quit, KeyboardInterrupt):
             print("Goodbye")        
         
-        if self.server_config is not None:
+        if MODE == MODE_FLASK:
             requests.delete(f"{self.server_config['address']}/game/reset")
+        elif MODE == MODE_MQTT:
+            self.mqtt.publish_quit()
+
 
 if __name__ == '__main__':
     g = Game()

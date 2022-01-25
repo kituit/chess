@@ -1,3 +1,7 @@
+# Server app used for Flask mode of game multiplayer
+# To use, run python3 -m flask run --host=0.0.0.0 to start flask server, and then run 
+# python3 src/gui.py --flask <flask ip address>
+
 from crypt import methods
 from werkzeug.exceptions import HTTPException
 from json import dumps
@@ -32,13 +36,9 @@ class AccessError(HTTPException):
     message = 'No message specified'
 
 
-
-
 APP = Flask(__name__)
 APP.config['TRAP_HTTP_EXCEPTIONS'] = True
 APP.register_error_handler(Exception, defaultHandler)
-
-
 
 
 def validPost(data):
