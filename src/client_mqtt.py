@@ -1,4 +1,3 @@
-from tracemalloc import start
 import paho.mqtt.client as mqtt
 import time
 from chess import BLACK, WHITE

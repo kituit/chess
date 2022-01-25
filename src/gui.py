@@ -6,6 +6,7 @@ import pygame.freetype
 from chess import KING, QUEEN, BISHOP, ROOK, KNIGHT, PAWN, BLACK, STALEMATE, WHITE, Board, ROW, COL, in_bounds
 import requests
 from client_mqtt import ChessMqttClient
+from client_flask import ChessFlaskClient
 
 # Colours (r, g, b)
 BLACK_TEXT = (0, 0, 0)
@@ -149,14 +150,10 @@ class Game():
         self.clock = pygame.time.Clock()
         self.server_config = None
         self.mqtt = None
+        self.flask = None
 
         if MODE == MODE_FLASK:
-            player_resp = requests.put(f"{sys.argv[1]}/player/new")
-            if player_resp.status_code == 404:
-                raise ValueError("Server not found")
-            elif player_resp.status_code != 200:
-                raise ValueError("Server error")
-            self.server_config = {'active': True, 'address': sys.argv[1], 'player': player_resp.json()}
+            self.flask = ChessFlaskClient(sys.argv[2], self.board)
         elif MODE == MODE_MQTT:
             self.mqtt = ChessMqttClient(sys.argv[2], self.board)
             self.mqtt.start()
@@ -185,8 +182,8 @@ class Game():
     
     def is_active(self):
         active = True
-        if MODE == MODE_FLASK and self.board.whose_turn() != self.server_config['player']:
-            active = requests.get(f"{self.server_config['address']}/game/active").json()
+        if MODE == MODE_FLASK:
+            active = self.flask.is_active()
         elif MODE == MODE_MQTT:
             active = self.mqtt.is_active()
         
@@ -194,14 +191,8 @@ class Game():
     
     def is_waiting(self):
         waiting = False
-        if MODE == MODE_FLASK and self.board.whose_turn() != self.server_config['player']:
-            most_recent_move = requests.get(f"{self.server_config['address']}/move").json()
-            if most_recent_move['player'] == self.server_config['player']:
-                waiting = True
-            else:
-                waiting = False
-                start_pos, end_pos = most_recent_move['move'][0], most_recent_move['move'][1]
-                self.board.move_piece(*start_pos, *end_pos)
+        if MODE == MODE_FLASK:
+            waiting = self.flask.is_waiting()
         if MODE == MODE_MQTT:
             waiting = self.mqtt.is_waiting()
 
@@ -210,7 +201,7 @@ class Game():
     def playPrologue(self):
         self.displayWaiting()
         while True:
-            if MODE == MODE_FLASK and requests.get(f"{self.server_config['address']}/game/active").json():
+            if MODE == MODE_FLASK and self.flask.is_active_force_check():
                 break
             elif MODE == MODE_MQTT and self.mqtt.is_active():
                 break
@@ -261,11 +252,8 @@ class Game():
                 start_pos, end_pos = selected_piece.get_pos(), square_coords
                 self.board.move_piece(*start_pos, *end_pos)
                 if MODE == MODE_FLASK:
-                    self.displayWaiting()
-                    requests.post(f"{self.server_config['address']}/move", json= {
-                        'player': self.server_config['player'],
-                        'move': [start_pos, end_pos]
-                    })
+                    self.displayWaiting() # Added redraw before publish to avoid latency waiting for http response
+                    self.flask.publish_move(start_pos, end_pos)
                 elif MODE == MODE_MQTT:
                     self.mqtt.publish_move(start_pos, end_pos)
 
@@ -285,7 +273,7 @@ class Game():
 
 
     def playEpilogue(self):
-        if MODE == MODE_MQTT and self.mqtt.opponent_has_quit():
+        if (MODE == MODE_MQTT and self.mqtt.opponent_has_quit()) or (MODE == MODE_FLASK and self.flask.opponent_has_quit()):
             self.displayForfeit()
 
         run = True
@@ -311,7 +299,7 @@ class Game():
             print("Goodbye")        
         
         if MODE == MODE_FLASK:
-            requests.delete(f"{self.server_config['address']}/game/reset")
+            self.flask.publish_quit()
         elif MODE == MODE_MQTT:
             self.mqtt.publish_quit()
 
