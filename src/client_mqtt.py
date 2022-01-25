@@ -26,11 +26,9 @@ class ChessMqttClient(mqtt.Client):
         
         self.loop_start()
         self.connect(self.host, 1883, 60)
-        
+        print("waiting for connection...")
         while not self.is_connected():
-            print("waiting for connection...")
-            
-            time.sleep(0.5)
+            time.sleep(0.1)
 
         if self.game_channel == None:
             self.game_channel = f"l-{time.time()}"

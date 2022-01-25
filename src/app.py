@@ -2,7 +2,6 @@
 # To use, run python3 -m flask run --host=0.0.0.0 to start flask server, and then run 
 # python3 src/gui.py --flask <flask ip address>
 
-from crypt import methods
 from werkzeug.exceptions import HTTPException
 from json import dumps
 from flask import Flask, request
