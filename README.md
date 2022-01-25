@@ -18,6 +18,27 @@ the game. Each cell in board grid is either
 | move_piece(curr_row, curr_col, new_row, new_col) | Moves piece from (curr_row, curr_col) to (new_row, new_col)                                 |
 | is_in_check(colour)                              | For a given player colour BLACK/WHITE, returns TRUE/FALSE if player is in check             |
 
+### 2. text_game.py
+
+Basic text interface used for testing. 
+
+### 3. game.py
+
+Code for GUI and logic for running game. 
+
+### 4. app.py
+
+Contains code for flask server that can be deployed to run multiplayer in flask mode.
+
+### 5. client_flask.py
+
+Code for client that interfaces between game code and flask server.
+
+### 6. client_mqtt.py
+
+Code for client that manages online games and interfaces between players via MQTT.
+
+
 ## Playing with GUI
 
 File containing GUI is located at src/game.py. To use, need pygame installed.
