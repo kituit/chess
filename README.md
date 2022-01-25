@@ -18,6 +18,20 @@ the game. Each cell in board grid is either
 | move_piece(curr_row, curr_col, new_row, new_col) | Moves piece from (curr_row, curr_col) to (new_row, new_col)                                 |
 | is_in_check(colour)                              | For a given player colour BLACK/WHITE, returns TRUE/FALSE if player is in check             |
 
+## Playing with GUI
+
+File containing GUI is located at src/game.py. To use, need pygame installed.
+
+    pip3 install pygame
+
+Game can be played in 3 modes: default (optional default flag --default), multiplayer via Flask Server (--flask flag), multipler via MQTT (--mqtt flag).
+
+## Local Play
+
+To play locally, run the following
+
+    python3 src/game.py
+
 ## Multiplayer
 
 There are two multiplayer implementations: 1) Flask Server, 2) MQTT. Flask server must be deployed
@@ -63,3 +77,5 @@ script compile_gui.sh.
 
     pip3 install pyinstaller
     bash compile_gui.sh
+
+An executable 'chess' will be located in folder dist.
