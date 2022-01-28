@@ -8,10 +8,9 @@ GAME = f"{NAME}/game"
 
 QUIT = "quit"
 
-
 class ChessMqttClient(mqtt.Client):
 
-    def __init__(self, host, board):
+    def __init__(self, host, board, qos):
         super().__init__()
         self.game_channel = None
         self.game_active = False
@@ -20,6 +19,7 @@ class ChessMqttClient(mqtt.Client):
         self.opponent = None
         self.host = host
         self.board = board
+        self.qos = qos
     
     def start(self):
         
@@ -29,6 +29,10 @@ class ChessMqttClient(mqtt.Client):
         while not self.is_connected():
             time.sleep(0.1)
 
+        if self.qos == 2:
+            # Somewhat hacky way of fixing issue where taking too long to connect meant not picking up message TODO see if can find better solution
+            time.sleep(2)
+
         if self.game_channel == None:
             self.game_channel = f"l-{time.time()}"
             self.player = WHITE
@@ -37,7 +41,8 @@ class ChessMqttClient(mqtt.Client):
             print(f"Starting new game {self.game_channel}")
             self.unsubscribe(LOBBY)
             self.subscribe(f"{GAME}/{self.game_channel}/{self.opponent}")
-            self.publish(LOBBY, self.game_channel, retain=True)
+            message_inf = self.publish(LOBBY, self.game_channel, qos=self.qos, retain=True)
+            message_inf.wait_for_publish()
 
 
     def is_active(self):
@@ -66,17 +71,17 @@ class ChessMqttClient(mqtt.Client):
     
     def publish_move(self, start_pos, end_pos):
         move_text = f"m-{start_pos[0]} {start_pos[1]} {end_pos[0]} {end_pos[1]}"
-        self.publish(f"{GAME}/{self.game_channel}/{self.player}", move_text)
+        self.publish(f"{GAME}/{self.game_channel}/{self.player}", move_text, qos=self.qos)
     
     def publish_quit(self):
         if self.opponent_has_quit():
             self.unsubscribe(f"{GAME}/{self.game_channel}/{self.opponent}")
         elif self.game_active:
-            message_inf = self.publish(f"{GAME}/{self.game_channel}/{self.player}", QUIT)
+            message_inf = self.publish(f"{GAME}/{self.game_channel}/{self.player}", QUIT, qos=self.qos)
             message_inf.wait_for_publish() # Add wait for publish as threading can mean program ends for client thread publishes quit message
             self.unsubscribe(f"{GAME}/{self.game_channel}/{self.opponent}")
         else:
-            message_inf = self.publish(f"{LOBBY}", f"cancelled: {self.game_channel}", retain= True)
+            message_inf = self.publish(f"{LOBBY}", f"cancelled: {self.game_channel}", retain= True, qos=self.qos)
             message_inf.wait_for_publish() # Add wait for publish as threading can mean program ends for client thread publishes quit message
             self.unsubscribe(f"{LOBBY}")
         self.set_game_active(False)
@@ -107,8 +112,8 @@ class ChessMqttClient(mqtt.Client):
 
                 self.unsubscribe(f"{LOBBY}")
                 self.subscribe(f"{GAME}/{self.game_channel}/{self.opponent}")
-                self.publish(LOBBY, f"joined: {self.game_channel}", retain= True)
-                self.publish(f"{GAME}/{self.game_channel}/{self.player}", f"joined: {self.game_channel}")
+                self.publish(LOBBY, f"joined: {self.game_channel}", qos=self.qos, retain= True)
+                self.publish(f"{GAME}/{self.game_channel}/{self.player}", f"joined: {self.game_channel}", qos=self.qos)
         
         elif msg.topic == f"{GAME}/{self.game_channel}/{self.opponent}":
             

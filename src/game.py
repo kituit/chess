@@ -30,12 +30,13 @@ DEFAULT_MOVES = []
 MODE_DEFAULT = "--default"
 MODE_FLASK = "--flask"
 MODE_MQTT = "--mqtt"
+MQTT_HIGH_LATENCY = "--highlatency"
 
 if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] == MODE_DEFAULT):
     MODE = MODE_DEFAULT
 elif len(sys.argv) == 3 and sys.argv[1] == MODE_FLASK:
     MODE = MODE_FLASK
-elif len(sys.argv) == 3 and sys.argv[1] == MODE_MQTT:
+elif len(sys.argv) >= 3 and sys.argv[1] == MODE_MQTT:
     MODE = MODE_MQTT
 else:
     raise ValueError("Invalid command line args")
@@ -155,7 +156,10 @@ class Game():
         if MODE == MODE_FLASK:
             self.flask = ChessFlaskClient(sys.argv[2], self.board)
         elif MODE == MODE_MQTT:
-            self.mqtt = ChessMqttClient(sys.argv[2], self.board)
+            qos = 0
+            if len(sys.argv) == 4 and sys.argv[3] == MQTT_HIGH_LATENCY:
+                qos = 2
+            self.mqtt = ChessMqttClient(sys.argv[2], self.board, qos)
             self.mqtt.start()
         else:
             self.server_config = None
