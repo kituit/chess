@@ -65,7 +65,7 @@ Haven't tested this beyond a local network but roughly speaking do the following
 
 ### MQTT
 
-Second implementation of multiplayer uses MQTT instead of a Flask Server. This has several advantages over server implementation. Firstly, MQTT is singificantly faster protocol compared to HTTP, and thus reduces latency and removes some compromises in code design that were done to reduce HTTP bottlenecks. Furthermore, MQTT implementation can be run using any MQTT broker (including free public ones like test.mosquitto.org), rather than requiring a server to be deployed. This implementation also allows an unlimited amount of games to run simultaneously, rather than only a single game that is allowed by flask server.
+Second implementation of multiplayer uses MQTT instead of a Flask Server. This has several advantages over server implementation. Firstly, MQTT is significantly faster protocol compared to HTTP, and thus reduces latency and removes some compromises in code design that were done to reduce HTTP bottlenecks. Furthermore, MQTT implementation can be run using any MQTT broker (including free public ones like test.mosquitto.org), rather than requiring a server to be deployed. This implementation also allows an unlimited amount of games to run simultaneously, rather than only a single game that is allowed by flask server.
 
 To use, do the following:
 
