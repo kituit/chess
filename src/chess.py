@@ -783,6 +783,9 @@ class Board:
         # Winner of game, defaults to None
         self.winner = None
 
+        # Piece that was moved in previous turn
+        self.previously_moved_piece = None
+
     def __str__(self):
         grid_str = "  abcdefgh\n  --------\n"
         for index, row in enumerate(self.grid):
@@ -899,6 +902,8 @@ class Board:
         # or the game has ended in stalemate
         if self.no_available_moves(opponent):
             self.winner = player if self.is_in_check(opponent) else STALEMATE
+        
+        self.previously_moved_piece = piece
 
     def get_piece(self, row, col):
         """
@@ -966,3 +971,7 @@ class Board:
             List: Returns list of pos (row, col) all pieces causing check. 
         """
         return [piece.get_pos() for piece in self.check[colour]['pieces_causing_check']]
+    
+    def get_previous_move_pos(self):
+        piece = self.previously_moved_piece
+        return None if piece is None else piece.get_pos()

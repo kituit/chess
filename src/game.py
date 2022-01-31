@@ -4,28 +4,6 @@ os.environ['SDL_AUDIODRIVER'] = 'dsp'
 import pygame
 import pygame.freetype
 from chess import KING, QUEEN, BISHOP, ROOK, KNIGHT, PAWN, BLACK, STALEMATE, WHITE, Board, ROW, COL, in_bounds
-import requests
-from client_mqtt import ChessMqttClient
-from client_flask import ChessFlaskClient
-
-# Colours (r, g, b)
-BLACK_TEXT = (0, 0, 0)
-BLACK_COLOUR = (189,183,107)
-WHITE_COLOUR = (255, 255, 224)
-MOVE_COLOUR = (0, 0, 150)
-CHECK_COLOUR = (150, 0, 0)
-
-# GUI Size Constants
-BOARD_SIZE = 1000 # Must be divisible by 8 to display correctly, as needs to be evenly divided into 8 x 8 grid
-SQUARE_SIZE = BOARD_SIZE // 8
-DISPLAY_DIMENSIONS = (BOARD_SIZE, BOARD_SIZE + SQUARE_SIZE)
-FONT_SIZE = SQUARE_SIZE // 2
-
-SPRITES_FILE = "src/img/sprites.png"
-FPS = 7
-
-DEFAULT_MOVES = []
-
 
 MODE_DEFAULT = "--default"
 MODE_FLASK = "--flask"
@@ -41,6 +19,27 @@ elif len(sys.argv) >= 3 and sys.argv[1] == MODE_MQTT:
 else:
     raise ValueError("Invalid command line args")
 
+if MODE == MODE_MQTT:
+    from client_mqtt import ChessMqttClient
+elif MODE == MODE_FLASK:
+    from client_flask import ChessFlaskClient
+
+# Colours (r, g, b)
+BLACK_TEXT = (0, 0, 0)
+BLACK_COLOUR = (189,183,107)
+WHITE_COLOUR = (255, 255, 224)
+MOVE_COLOUR = (0, 0, 150)
+CHECK_COLOUR = (150, 0, 0)
+PREVIOUS_MOVE_COLOUR = (149, 0, 255)
+
+# GUI Size Constants
+BOARD_SIZE = 1000 # Must be divisible by 8 to display correctly, as needs to be evenly divided into 8 x 8 grid
+SQUARE_SIZE = BOARD_SIZE // 8
+DISPLAY_DIMENSIONS = (BOARD_SIZE, BOARD_SIZE + SQUARE_SIZE)
+FONT_SIZE = SQUARE_SIZE // 2
+
+SPRITES_FILE = "src/img/sprites.png"
+FPS = 7
 
 # initialize all imported pygame modules
 pygame.init()
@@ -118,6 +117,8 @@ class Gui():
                     colour = MOVE_COLOUR
                 elif (row, col) in board.get_checking_pieces_pos(board.whose_turn()):
                     colour = CHECK_COLOUR
+                elif (row, col) == board.get_previous_move_pos():
+                    colour = PREVIOUS_MOVE_COLOUR
                 elif (col + row) % 2 == 0:
                     colour = BLACK_COLOUR
                 else:
@@ -222,7 +223,7 @@ class Game():
 
     def playMain(self):
         selected_piece = None
-        moves = DEFAULT_MOVES
+        moves = []
         while self.board.winner is None and self.is_active():
             self.clock.tick(FPS)
 
@@ -251,8 +252,14 @@ class Game():
     def doMove(self, pos, selected_piece, moves):
         square_coords = (pos[1] // SQUARE_SIZE, pos[0] // SQUARE_SIZE)
         if in_bounds(square_coords):
+            
+            # Deselect piece
+            if selected_piece is not None and selected_piece == self.board.get_piece(*square_coords):
+                selected_piece = None
+                moves = []
+            
             # If has already selected piece, choosing where to move piece
-            if selected_piece is not None and square_coords in moves:
+            elif selected_piece is not None and square_coords in moves:
                 start_pos, end_pos = selected_piece.get_pos(), square_coords
                 self.board.move_piece(*start_pos, *end_pos)
                 if MODE == MODE_FLASK:
@@ -262,7 +269,7 @@ class Game():
                     self.mqtt.publish_move(start_pos, end_pos)
 
                 selected_piece = None
-                moves = DEFAULT_MOVES
+                moves = []
 
             # Has not already selected piece, choosing piece to move
             else:
@@ -271,7 +278,7 @@ class Game():
                     moves = selected_piece.available_moves(self.board)
                     print(moves)
                 else:
-                    moves = DEFAULT_MOVES
+                    moves = []
         
         return moves, selected_piece
 

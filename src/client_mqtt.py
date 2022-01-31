@@ -31,7 +31,7 @@ class ChessMqttClient(mqtt.Client):
 
         if self.qos == 2:
             # Somewhat hacky way of fixing issue where taking too long to connect meant not picking up message TODO see if can find better solution
-            time.sleep(2)
+            time.sleep(5)
 
         if self.game_channel == None:
             self.game_channel = f"l-{time.time()}"
