@@ -33,7 +33,7 @@ File containing GUI is located at src/game.py. To use, need pygame installed.
 
     pip3 install pygame
 
-Game can be played in 3 modes: default (optional default flag --default), multiplayer via Flask Server (--flask flag), multipler via MQTT (--mqtt flag).
+Game can be played in 3 modes: default (optional default flag --default), multiplayer via Flask Server (--flask flag), multiplayer via MQTT (--mqtt flag).
 
 ## Local Play
 
